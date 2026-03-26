@@ -2,9 +2,10 @@
 <html lang="pt-pt">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link href="https://api.fontshare.com/v2/css?f[]=general-sans@700;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'General Sans', sans-serif; margin: 0; background: #050505; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        body { font-family: 'General Sans', sans-serif; margin: 0; background: #050505; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden; }
         
         #status-obs {
             padding: 12px 30px; border-radius: 50px; font-weight: 800; margin-bottom: 25px;
@@ -14,13 +15,13 @@
         .status-on { background: #b71c1c !important; color: white !important; box-shadow: 0 0 40px #ff0000; animation: flash 1s infinite; border-color: #ff4d4d !important; }
         @keyframes flash { 50% { opacity: 0.6; } }
 
-        #topo-relogio { background: #076f28; padding: 20px 80px; font-size: 64px; font-weight: 800; border-radius: 20px 20px 0 0; min-width: 650px; text-align: center; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
-        #corpo-cronometro { background: #05561f; padding: 50px 100px; border-radius: 0 0 50px 50px; border: 10px solid #076f28; border-top: none; display: flex; flex-direction: column; align-items: center; }
+        #topo-relogio { background: #076f28; padding: 20px 80px; font-size: 64px; font-weight: 800; border-radius: 20px 20px 0 0; min-width: 320px; text-align: center; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
+        #corpo-cronometro { background: #05561f; padding: 30px 50px; border-radius: 0 0 50px 50px; border: 10px solid #076f28; border-top: none; display: flex; flex-direction: column; align-items: center; }
         
         #tempo-display { 
-            font-size: 300px; font-weight: 800; color: #FFFFFF; line-height: 0.8; 
+            font-size: clamp(100px, 20vw, 300px); font-weight: 800; color: #FFFFFF; line-height: 0.8; 
             font-variant-numeric: tabular-nums; outline: none; border: none;
-            cursor: text; min-width: 850px; text-align: center; transition: color 0.1s;
+            cursor: text; text-align: center; transition: color 0.1s;
         }
         
         .urgente { color: #ffeb3b !important; } 
@@ -30,17 +31,16 @@
         .tremendo { animation: shake 0.1s infinite; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(6px); } 75% { transform: translateX(-6px); } }
 
-        #controles { margin-top: 30px; background: #151515; padding: 30px; border-radius: 25px; display: flex; flex-wrap: wrap; gap: 12px; align-items: center; justify-content: center; width: 1150px; border: 1px solid #222; }
+        #controles { margin-top: 30px; background: #151515; padding: 20px; border-radius: 25px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; max-width: 95%; border: 1px solid #222; }
         
         button { padding: 15px 20px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: 0.2s; font-size: 11px; letter-spacing: 0.5px; background: #076f28; color: white; border-bottom: 3px solid #044419; }
         button:hover { background: #0a8a33; transform: translateY(-2px); }
         button:active { transform: translateY(1px); border-bottom: none; }
         
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
-        .btn-off { background: #333 !important; border-bottom-color: #111 !important; color: #888; }
         .btn-danger { background: #8b0000 !important; border-bottom-color: #4b0000 !important; }
         
-        input { background: #000; border: 2px solid #333; color: #55E21F; padding: 12px; width: 140px; text-align: center; font-size: 28px; font-weight: 800; border-radius: 10px; outline: none; font-family: 'General Sans', sans-serif; }
+        input { background: #000; border: 2px solid #333; color: #55E21F; padding: 12px; width: 120px; text-align: center; font-size: 24px; font-weight: 800; border-radius: 10px; outline: none; }
     </style>
 </head>
 <body>
@@ -54,24 +54,17 @@
     
     <div id="controles">
         <input type="text" id="in-t" value="05:00">
-        
         <button onclick="setPre('02:00')">2 Min</button>
         <button onclick="setPre('05:00')">5 Min</button>
         <button onclick="setPre('15:00')">15 Min</button>
-        
-        <div style="width:2px; height:50px; background:#333; margin:0 5px;"></div>
-        
         <button id="btn-main" onclick="acaoPrincipal()">Iniciar</button>
-        <button class="btn-danger" onclick="pararTudo()">Desativar o Tempo</button>
-        <button onclick="resetarTotal()">Resetar o Cronometro</button>
-
-        <div style="width:2px; height:50px; background:#333; margin:0 5px;"></div>
-        
+        <button class="btn-danger" onclick="pararTudo()">Desativar</button>
+        <button onclick="resetarTotal()">Resetar Cronometro</button>
         <button id="btn-vis-on" onclick="toggleOBS(true)">Mostrar no OBS</button>
-        <button id="btn-vis-off" class="btn-off" onclick="toggleOBS(false)">Ocultar no OBS</button>
+        <button id="btn-vis-off" style="background:#333;" onclick="toggleOBS(false)">Ocultar</button>
     </div>
 
-    <audio id="sirene" src="https://www.soundjay.com/buttons/beep-07.mp3" preload="auto"></audio>
+    <audio id="sirene" src="https://www.soundjay.com/buttons/beep-07.mp3" preload="auto" crossorigin="anonymous"></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -124,22 +117,22 @@
         }
 
         window.acaoPrincipal = () => {
-            // Desbloqueia o áudio no primeiro clique (necessário para navegadores)
-            sireneSom.play().then(() => { sireneSom.pause(); }).catch(() => {});
+            // --- UNLOCK AUDIO FOR MOBILE ---
+            // Toca um silêncio rápido para "acordar" o sistema de som do iPhone/Android
+            sireneSom.play().then(() => {
+                sireneSom.pause();
+                sireneSom.currentTime = 0;
+            }).catch(() => {});
 
             if (rodando) {
-                // --- AÇÃO DE PAUSAR ---
                 clearInterval(ticker);
                 rodando = false;
                 btnMain.innerText = "Iniciar";
                 btnMain.classList.remove('btn-pausar');
                 disp.contentEditable = "true";
-                
-                // PARA O TREMOR E O SOM IMEDIATAMENTE AO PAUSAR
                 disp.classList.remove('tremendo');
                 sireneSom.pause();
             } else {
-                // --- AÇÃO DE INICIAR ---
                 disp.classList.remove('branco');
                 rodando = true;
                 btnMain.innerText = "Pausar";
@@ -157,11 +150,13 @@
 
                     if (totalSegundos < 0) {
                         disp.className = 'excedido';
-                        // Lógica 00:00 a -00:10
                         if (totalSegundos >= -10) {
                             disp.classList.add('tremendo');
                             sireneSom.currentTime = 0;
-                            sireneSom.play(); 
+                            let playPromise = sireneSom.play();
+                            if (playPromise !== undefined) {
+                                playPromise.catch(() => { console.log("Som bloqueado pelo sistema."); });
+                            }
                         } else {
                             disp.classList.remove('tremendo');
                             sireneSom.pause();
@@ -182,23 +177,18 @@
             btnMain.innerText = "Iniciar";
             btnMain.classList.remove('btn-pausar');
             disp.contentEditable = "true";
-            
             totalSegundos = tempoOriginalSegundos;
             const abs = Math.abs(totalSegundos);
             const m = Math.floor(abs/60), s = abs%60;
             disp.innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
             inputTempo.value = disp.innerText;
-
             disp.classList.remove('tremendo', 'excedido', 'urgente');
             disp.classList.add('branco');
             sireneSom.pause();
             subir();
         };
 
-        window.pararTudo = () => {
-            resetarTotal();
-            toggleOBS(false);
-        };
+        window.pararTudo = () => { resetarTotal(); toggleOBS(false); };
 
         window.toggleOBS = (v) => {
             visivel = v;
@@ -211,9 +201,8 @@
         inputTempo.onblur = () => definirNovoTempo(inputTempo.value);
         disp.onblur = () => definirNovoTempo(disp.innerText);
         disp.onkeydown = (e) => { if(e.key === "Enter") { e.preventDefault(); disp.blur(); } };
-
         window.setPre = (v) => { definirNovoTempo(v); }
-
+        
         setInterval(() => { 
             document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); 
         }, 1000);
