@@ -3,65 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@700;800&display=swap" rel="stylesheet">
+    <link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700,800&display=swap" rel="stylesheet">
+    
     <style>
-        body { font-family: 'General Sans', sans-serif; margin: 0; background: #050505; color: white; display: flex; flex-direction: column; justify-content: center; align-items: center; min-height: 100vh; overflow-x: hidden; }
+        :root {
+            --bg-escuro: #050505;
+            --verde-primario: #076f28;
+            --verde-secundario: #05561f;
+            --branco: #FFFFFF;
+            --fonte-principal: 'General Sans', sans-serif;
+        }
+
+        * { 
+            box-sizing: border-box; 
+            -webkit-font-smoothing: antialiased; 
+            -moz-osx-font-smoothing: grayscale; 
+        }
+
+        body { 
+            font-family: var(--fonte-principal); 
+            margin: 0; 
+            background: var(--bg-escuro); 
+            color: var(--branco); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh;
+            padding: 20px;
+        }
         
         #status-obs {
-            padding: 12px 30px; border-radius: 50px; font-weight: 800; margin-bottom: 25px;
-            font-size: 14px; text-transform: uppercase; background: #111; color: #444;
-            border: 2px solid rgba(255,255,255,0.05); transition: 0.4s;
+            padding: 10px 25px; border-radius: 50px; font-weight: 700; margin-bottom: 15px;
+            font-size: 12px; text-transform: uppercase; background: #111; color: #555;
+            border: 2px solid rgba(255,255,255,0.05); text-align: center;
         }
-        .status-on { background: #b71c1c !important; color: white !important; box-shadow: 0 0 40px #ff0000; animation: flash 1s infinite; border-color: #ff4d4d !important; }
+        .status-on { background: #b71c1c !important; color: white !important; box-shadow: 0 0 30px #ff0000; animation: flash 1s infinite; border-color: #ff4d4d !important; }
+
         @keyframes flash { 50% { opacity: 0.6; } }
 
-        #topo-relogio { background: #076f28; padding: 20px 80px; font-size: 64px; font-weight: 800; border-radius: 20px 20px 0 0; min-width: 320px; text-align: center; box-shadow: 0 -10px 30px rgba(0,0,0,0.5); }
-        #corpo-cronometro { background: #05561f; padding: 30px 50px; border-radius: 0 0 50px 50px; border: 10px solid #076f28; border-top: none; display: flex; flex-direction: column; align-items: center; }
-        
-        #tempo-display { 
-            font-size: clamp(100px, 20vw, 300px); font-weight: 800; color: #FFFFFF; line-height: 0.8; 
-            font-variant-numeric: tabular-nums; outline: none; border: none;
-            cursor: text; text-align: center; transition: color 0.1s;
+        /* Container do Cronômetro Responsivo */
+        .cronometro-container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        #topo-relogio { 
+            background: var(--verde-primario); 
+            padding: 15px; 
+            font-size: clamp(24px, 5vw, 48px); 
+            font-weight: 800; 
+            border-radius: 20px 20px 0 0; 
+            text-align: center; 
+        }
+
+        #corpo-cronometro { 
+            background: var(--verde-secundario); 
+            padding: 40px 20px; 
+            border-radius: 0 0 40px 40px; 
+            border: 8px solid var(--verde-primario); 
+            border-top: none; 
+            display: flex; 
+            justify-content: center;
         }
         
+        #tempo-display { 
+            font-size: clamp(80px, 25vw, 280px); 
+            font-weight: 800; 
+            color: var(--branco); 
+            line-height: 0.85; 
+            font-variant-numeric: tabular-nums; 
+            outline: none; 
+            text-align: center;
+            width: 100%;
+        }
+        
+        /* Cores de Estado */
         .urgente { color: #ffeb3b !important; } 
         .excedido { color: #ff4d4d !important; }
-        .branco { color: #FFFFFF !important; } 
-        
         .tremendo { animation: shake 0.1s infinite; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(6px); } 75% { transform: translateX(-6px); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(4px); } 75% { transform: translateX(-4px); } }
 
-        #controles { margin-top: 30px; background: #151515; padding: 20px; border-radius: 25px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; max-width: 95%; border: 1px solid #222; }
+        /* Painel de Controles Flexível */
+        #controles { 
+            margin-top: 25px; 
+            background: #121212; 
+            padding: 20px; 
+            border-radius: 20px; 
+            display: flex; 
+            flex-wrap: wrap; 
+            gap: 10px; 
+            justify-content: center; 
+            width: 100%;
+            max-width: 900px;
+            border: 1px solid #222;
+        }
         
-        button { padding: 15px 20px; border: none; border-radius: 10px; font-weight: 800; cursor: pointer; text-transform: uppercase; transition: 0.2s; font-size: 11px; letter-spacing: 0.5px; background: #076f28; color: white; border-bottom: 3px solid #044419; }
-        button:hover { background: #0a8a33; transform: translateY(-2px); }
+        .grupo-input { display: flex; align-items: center; gap: 8px; width: 100%; justify-content: center; margin-bottom: 10px; }
+
+        input { 
+            background: #000; border: 2px solid #333; color: #55E21F; 
+            padding: 12px; width: 140px; text-align: center; 
+            font-size: 22px; font-weight: 700; border-radius: 12px; font-family: var(--fonte-principal);
+        }
+
+        button { 
+            padding: 14px 18px; border: none; border-radius: 10px; 
+            font-weight: 700; cursor: pointer; text-transform: uppercase; 
+            font-size: 11px; letter-spacing: 0.5px; background: var(--verde-primario); 
+            color: white; border-bottom: 3px solid #044419;
+            flex-grow: 1; /* Faz os botões crescerem no celular */
+            min-width: 120px;
+        }
+        
         button:active { transform: translateY(1px); border-bottom: none; }
-        
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-danger { background: #8b0000 !important; border-bottom-color: #4b0000 !important; }
-        
-        input { background: #000; border: 2px solid #333; color: #55E21F; padding: 12px; width: 120px; text-align: center; font-size: 24px; font-weight: 800; border-radius: 10px; outline: none; }
+        .btn-obs { background: #333; }
+
+        /* Ajustes para telas pequenas (Celular) */
+        @media (max-width: 600px) {
+            #topo-relogio { padding: 10px; }
+            #corpo-cronometro { padding: 30px 10px; }
+            #controles { padding: 15px; }
+            button { font-size: 10px; padding: 12px 10px; }
+        }
     </style>
 </head>
 <body>
 
     <div id="status-obs">Sistema Offline</div>
-    <div id="topo-relogio">00:00:00</div>
-    
-    <div id="corpo-cronometro">
-        <div id="tempo-display" contenteditable="true" spellcheck="false" class="branco">05:00</div>
+
+    <div class="cronometro-container">
+        <div id="topo-relogio">00:00:00</div>
+        <div id="corpo-cronometro">
+            <div id="tempo-display" contenteditable="true" spellcheck="false">05:00</div>
+        </div>
     </div>
     
     <div id="controles">
-        <input type="text" id="in-t" value="05:00">
+        <div class="grupo-input">
+            <input type="text" id="in-t" value="05:00">
+        </div>
+        
         <button onclick="setPre('02:00')">2 Min</button>
         <button onclick="setPre('05:00')">5 Min</button>
         <button onclick="setPre('15:00')">15 Min</button>
+        
         <button id="btn-main" onclick="acaoPrincipal()">Iniciar</button>
         <button class="btn-danger" onclick="pararTudo()">Desativar</button>
         <button onclick="resetarTotal()">Resetar Cronometro</button>
-        <button id="btn-vis-on" onclick="toggleOBS(true)">Mostrar no OBS</button>
-        <button id="btn-vis-off" style="background:#333;" onclick="toggleOBS(false)">Ocultar</button>
+        
+        <button class="btn-obs" id="btn-vis-on" onclick="toggleOBS(true)">Mostrar no OBS</button>
+        <button class="btn-obs" id="btn-vis-off" onclick="toggleOBS(false)">Ocultar</button>
     </div>
 
     <audio id="sirene" src="https://www.soundjay.com/buttons/beep-07.mp3" preload="auto" crossorigin="anonymous"></audio>
@@ -109,20 +205,14 @@
             let p = limpo.split(':');
             totalSegundos = (parseInt(p[0]) * 60) + parseInt(p[1]);
             tempoOriginalSegundos = totalSegundos; 
-            
-            disp.classList.remove('tremendo', 'excedido', 'urgente');
-            disp.classList.add('branco');
+            disp.className = ''; 
             sireneSom.pause();
             subir();
         }
 
         window.acaoPrincipal = () => {
-            // --- UNLOCK AUDIO FOR MOBILE ---
-            // Toca um silêncio rápido para "acordar" o sistema de som do iPhone/Android
-            sireneSom.play().then(() => {
-                sireneSom.pause();
-                sireneSom.currentTime = 0;
-            }).catch(() => {});
+            // Desbloqueia áudio para Mobile
+            sireneSom.play().then(() => { sireneSom.pause(); sireneSom.currentTime = 0; }).catch(() => {});
 
             if (rodando) {
                 clearInterval(ticker);
@@ -133,7 +223,6 @@
                 disp.classList.remove('tremendo');
                 sireneSom.pause();
             } else {
-                disp.classList.remove('branco');
                 rodando = true;
                 btnMain.innerText = "Pausar";
                 btnMain.classList.add('btn-pausar');
@@ -153,10 +242,7 @@
                         if (totalSegundos >= -10) {
                             disp.classList.add('tremendo');
                             sireneSom.currentTime = 0;
-                            let playPromise = sireneSom.play();
-                            if (playPromise !== undefined) {
-                                playPromise.catch(() => { console.log("Som bloqueado pelo sistema."); });
-                            }
+                            sireneSom.play().catch(() => {});
                         } else {
                             disp.classList.remove('tremendo');
                             sireneSom.pause();
@@ -164,7 +250,7 @@
                     } else if (totalSegundos <= 30) {
                         disp.className = 'urgente';
                     } else {
-                        disp.className = 'branco';
+                        disp.className = '';
                     }
                     subir();
                 }, 1000);
@@ -182,8 +268,7 @@
             const m = Math.floor(abs/60), s = abs%60;
             disp.innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
             inputTempo.value = disp.innerText;
-            disp.classList.remove('tremendo', 'excedido', 'urgente');
-            disp.classList.add('branco');
+            disp.className = '';
             sireneSom.pause();
             subir();
         };
