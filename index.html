@@ -42,7 +42,6 @@
 
         @keyframes flash { 50% { opacity: 0.6; } }
 
-        /* Container do Cronômetro Responsivo */
         .cronometro-container {
             width: 100%;
             max-width: 900px;
@@ -80,28 +79,31 @@
             width: 100%;
         }
         
-        /* Cores de Estado */
         .urgente { color: #ffeb3b !important; } 
         .excedido { color: #ff4d4d !important; }
         .tremendo { animation: shake 0.1s infinite; }
         @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(4px); } 75% { transform: translateX(-4px); } }
 
-        /* Painel de Controles Flexível */
         #controles { 
             margin-top: 25px; 
             background: #121212; 
             padding: 20px; 
             border-radius: 20px; 
             display: flex; 
-            flex-wrap: wrap; 
-            gap: 10px; 
-            justify-content: center; 
+            flex-direction: column; 
+            gap: 15px; 
             width: 100%;
             max-width: 900px;
             border: 1px solid #222;
         }
         
-        .grupo-input { display: flex; align-items: center; gap: 8px; width: 100%; justify-content: center; margin-bottom: 10px; }
+        .linha-controles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            width: 100%;
+        }
 
         input { 
             background: #000; border: 2px solid #333; color: #55E21F; 
@@ -114,21 +116,17 @@
             font-weight: 700; cursor: pointer; text-transform: uppercase; 
             font-size: 11px; letter-spacing: 0.5px; background: var(--verde-primario); 
             color: white; border-bottom: 3px solid #044419;
-            flex-grow: 1; /* Faz os botões crescerem no celular */
+            flex: 1;
             min-width: 120px;
         }
         
         button:active { transform: translateY(1px); border-bottom: none; }
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-danger { background: #8b0000 !important; border-bottom-color: #4b0000 !important; }
-        .btn-obs { background: #333; }
+        .btn-obs { background: #333; border-bottom-color: #111; }
 
-        /* Ajustes para telas pequenas (Celular) */
         @media (max-width: 600px) {
-            #topo-relogio { padding: 10px; }
-            #corpo-cronometro { padding: 30px 10px; }
-            #controles { padding: 15px; }
-            button { font-size: 10px; padding: 12px 10px; }
+            button { min-width: 45%; }
         }
     </style>
 </head>
@@ -144,23 +142,26 @@
     </div>
     
     <div id="controles">
-        <div class="grupo-input">
+        <div class="linha-controles">
             <input type="text" id="in-t" value="05:00">
+            <button onclick="setPre('02:00')">2 Min</button>
+            <button onclick="setPre('05:00')">5 Min</button>
+            <button onclick="setPre('15:00')">15 Min</button>
         </div>
-        
-        <button onclick="setPre('02:00')">2 Min</button>
-        <button onclick="setPre('05:00')">5 Min</button>
-        <button onclick="setPre('15:00')">15 Min</button>
-        
-        <button id="btn-main" onclick="acaoPrincipal()">Iniciar</button>
-        <button class="btn-danger" onclick="pararTudo()">Desativar</button>
-        <button onclick="resetarTotal()">Resetar Cronometro</button>
-        
-        <button class="btn-obs" id="btn-vis-on" onclick="toggleOBS(true)">Mostrar no OBS</button>
-        <button class="btn-obs" id="btn-vis-off" onclick="toggleOBS(false)">Ocultar</button>
+
+        <div class="linha-controles">
+            <button id="btn-main" onclick="acaoPrincipal()">Iniciar</button>
+            <button class="btn-danger" onclick="pararTudo()">Desativar</button>
+            <button onclick="resetarTotal()">Resetar</button>
+            <button class="btn-obs" id="btn-vis-on" onclick="toggleOBS(true)">Mostrar OBS</button>
+            <button class="btn-obs" id="btn-vis-off" onclick="toggleOBS(false)">Ocultar</button>
+        </div>
     </div>
 
-    <audio id="sirene" src="https://www.soundjay.com/buttons/beep-07.mp3" preload="auto" crossorigin="anonymous"></audio>
+    <audio id="sirene" preload="auto">
+        <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+        <source src="https://www.soundjay.com/buttons/beep-07.mp3" type="audio/mpeg">
+    </audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -184,6 +185,14 @@
         let ticker, totalSegundos = 300, rodando = false, visivel = false;
         let tempoOriginalSegundos = 300; 
 
+        // Função para forçar o desbloqueio do áudio
+        function forcarAudio() {
+            sireneSom.play().then(() => {
+                sireneSom.pause();
+                sireneSom.currentTime = 0;
+            }).catch(e => console.log("Audio aguardando interação"));
+        }
+
         function subir() {
             set(ref(db, 'sessao'), { t: disp.innerText, c: disp.className, v: visivel });
         }
@@ -199,6 +208,7 @@
         }
 
         function definirNovoTempo(texto) {
+            forcarAudio();
             const limpo = formatarEntrada(texto);
             disp.innerText = limpo;
             inputTempo.value = limpo;
@@ -211,9 +221,7 @@
         }
 
         window.acaoPrincipal = () => {
-            // Desbloqueia áudio para Mobile
-            sireneSom.play().then(() => { sireneSom.pause(); sireneSom.currentTime = 0; }).catch(() => {});
-
+            forcarAudio();
             if (rodando) {
                 clearInterval(ticker);
                 rodando = false;
@@ -242,6 +250,7 @@
                         if (totalSegundos >= -10) {
                             disp.classList.add('tremendo');
                             sireneSom.currentTime = 0;
+                            sireneSom.volume = 1.0;
                             sireneSom.play().catch(() => {});
                         } else {
                             disp.classList.remove('tremendo');
@@ -258,6 +267,7 @@
         };
 
         window.resetarTotal = () => {
+            forcarAudio();
             clearInterval(ticker);
             rodando = false;
             btnMain.innerText = "Iniciar";
@@ -276,6 +286,7 @@
         window.pararTudo = () => { resetarTotal(); toggleOBS(false); };
 
         window.toggleOBS = (v) => {
+            forcarAudio();
             visivel = v;
             const st = document.getElementById('status-obs');
             st.innerText = v ? "OBS: AO VIVO 🟢" : "OBS: OCULTO 🔴";
