@@ -108,7 +108,7 @@
         button { 
             padding: 12px 15px; border: none; border-radius: 8px; 
             font-weight: 700; cursor: pointer; text-transform: uppercase; 
-            font-size: 10px; background: #333; /* Cor padrão cinza */
+            font-size: 10px; background: #333; 
             color: white; border-bottom: 3px solid #111;
             flex: 1; min-width: 90px;
             transition: 0.2s;
@@ -116,10 +116,8 @@
         
         button:active { transform: translateY(2px); border-bottom-width: 1px; }
 
-        /* Estilos Específicos */
         .btn-verde-ativa { background: var(--verde-primario) !important; border-bottom-color: #044419 !important; }
         .btn-vermelha-ativa { background: #b71c1c !important; border-bottom-color: #5f0a0a !important; }
-        
         .btn-acao { background: var(--verde-primario); border-bottom-color: #044419; }
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-danger { background: #8b0000 !important; border-bottom-color: #4b0000 !important; }
@@ -129,7 +127,7 @@
         }
     </style>
 </head>
-<body>
+<body onclick="unlockAudio()">
 
     <div id="status-obs">Sistema Offline</div>
 
@@ -184,34 +182,52 @@
         let visivel = false;
         let tempoOriginalSegundos = 120;
 
+        // --- SISTEMA DE ÁUDIO REFORÇADO PARA IPHONE ---
         let audioCtx = null;
         let bipInterval = null;
 
-        function unlockAudio() {
-            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            if (audioCtx.state === 'suspended') audioCtx.resume();
-        }
+        window.unlockAudio = function() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        };
 
         function tocarBip() {
             if (bipInterval) return;
             unlockAudio();
             bipInterval = setInterval(() => {
+                if (!audioCtx) return;
                 const now = audioCtx.currentTime;
                 const osc = audioCtx.createOscillator();
                 const gain = audioCtx.createGain();
+                
                 osc.type = 'square';
-                osc.frequency.setValueAtTime(3000, now);
+                osc.frequency.setValueAtTime(2500, now);
+                
                 gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(1.0, now + 0.01);
-                gain.gain.setValueAtTime(1.0, now + 0.1);
+                gain.gain.linearRampToValueAtTime(1, now + 0.01);
+                gain.gain.setValueAtTime(1, now + 0.1);
                 gain.gain.linearRampToValueAtTime(0, now + 0.15);
-                osc.connect(gain); gain.connect(audioCtx.destination);
-                osc.start(now); osc.stop(now + 0.15);
+                
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                osc.start(now);
+                osc.stop(now + 0.15);
             }, 300);
         }
 
-        function pararBip() { if (bipInterval) { clearInterval(bipInterval); bipInterval = null; } }
+        function pararBip() { 
+            if (bipInterval) { 
+                clearInterval(bipInterval); 
+                bipInterval = null; 
+            } 
+        }
 
+        // --- LÓGICA DE SINCRONIA ---
         function formatarTempo(segundos) {
             const sinal = segundos < 0 ? '-' : '';
             const abs = Math.abs(segundos);
@@ -236,17 +252,24 @@
 
             if (totalSegundos < 0) {
                 disp.className = 'excedido';
-                if (totalSegundos >= -10) { disp.classList.add('tremendo'); tocarBip(); }
-                else { disp.classList.remove('tremendo'); pararBip(); }
+                if (totalSegundos >= -10) { 
+                    disp.classList.add('tremendo'); 
+                    tocarBip(); 
+                } else { 
+                    disp.classList.remove('tremendo'); 
+                    pararBip(); 
+                }
             } else if (totalSegundos <= 30) {
-                disp.className = 'urgente'; pararBip();
+                disp.className = 'urgente'; 
+                pararBip();
             } else {
-                disp.className = ''; pararBip();
+                disp.className = ''; 
+                pararBip();
             }
         }
 
         function sincronizarFirebase() {
-            localStorage.setItem('cronometro_vFinal', JSON.stringify({
+            localStorage.setItem('cronometro_vFinal_v2', JSON.stringify({
                 totalSegundos, tempoOriginalSegundos, rodando, visivel, ts: Date.now()
             }));
             set(ref(db, 'sessao'), { t: disp.innerText, c: disp.className, v: visivel });
@@ -284,17 +307,12 @@
             unlockAudio();
             visivel = v;
             const st = document.getElementById('status-obs');
-            
             if (v) {
-                st.innerText = "OBS: AO VIVO 🟢";
-                st.classList.add('status-on');
-                btnShow.classList.add('btn-verde-ativa');
-                btnHide.classList.remove('btn-vermelha-ativa');
+                st.innerText = "OBS: AO VIVO 🟢"; st.classList.add('status-on');
+                btnShow.classList.add('btn-verde-ativa'); btnHide.classList.remove('btn-vermelha-ativa');
             } else {
-                st.innerText = "OBS: OCULTO 🔴";
-                st.classList.remove('status-on');
-                btnHide.classList.add('btn-vermelha-ativa');
-                btnShow.classList.remove('btn-verde-ativa');
+                st.innerText = "OBS: OCULTO 🔴"; st.classList.remove('status-on');
+                btnHide.classList.add('btn-vermelha-ativa'); btnShow.classList.remove('btn-verde-ativa');
             }
             sincronizarFirebase();
         };
@@ -317,7 +335,7 @@
 
         setInterval(() => { document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); }, 1000);
 
-        const saved = localStorage.getItem('cronometro_vFinal');
+        const saved = localStorage.getItem('cronometro_vFinal_v2');
         if (saved) {
             const data = JSON.parse(saved);
             totalSegundos = data.totalSegundos;
@@ -329,7 +347,6 @@
             }
             window.toggleOBS(visivel);
         } else {
-            // Estado inicial padrão
             window.toggleOBS(false);
         }
         
