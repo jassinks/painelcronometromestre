@@ -14,11 +14,7 @@
             --fonte-principal: 'General Sans', sans-serif;
         }
 
-        * { 
-            box-sizing: border-box; 
-            -webkit-font-smoothing: antialiased; 
-            -moz-osx-font-smoothing: grayscale; 
-        }
+        * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
 
         body { 
             font-family: var(--fonte-principal); 
@@ -39,15 +35,9 @@
             border: 2px solid rgba(255,255,255,0.05); text-align: center;
         }
         .status-on { background: #b71c1c !important; color: white !important; box-shadow: 0 0 30px #ff0000; animation: flash 1s infinite; border-color: #ff4d4d !important; }
-
         @keyframes flash { 50% { opacity: 0.6; } }
 
-        .cronometro-container {
-            width: 100%;
-            max-width: 900px;
-            display: flex;
-            flex-direction: column;
-        }
+        .cronometro-container { width: 100%; max-width: 900px; display: flex; flex-direction: column; }
 
         #topo-relogio { 
             background: var(--verde-primario); 
@@ -77,6 +67,7 @@
             outline: none; 
             text-align: center;
             width: 100%;
+            cursor: text;
         }
         
         .urgente { color: #ffeb3b !important; } 
@@ -97,13 +88,7 @@
             border: 1px solid #222;
         }
         
-        .linha-controles {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            justify-content: center;
-            width: 100%;
-        }
+        .linha-controles { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
 
         input { 
             background: #000; border: 2px solid #333; color: #55E21F; 
@@ -116,18 +101,13 @@
             font-weight: 700; cursor: pointer; text-transform: uppercase; 
             font-size: 11px; letter-spacing: 0.5px; background: var(--verde-primario); 
             color: white; border-bottom: 3px solid #044419;
-            flex: 1;
-            min-width: 120px;
+            flex: 1; min-width: 120px;
         }
         
         button:active { transform: translateY(1px); border-bottom: none; }
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-danger { background: #8b0000 !important; border-bottom-color: #4b0000 !important; }
         .btn-obs { background: #333; border-bottom-color: #111; }
-
-        @media (max-width: 600px) {
-            button { min-width: 45%; }
-        }
     </style>
 </head>
 <body>
@@ -143,18 +123,18 @@
     
     <div id="controles">
         <div class="linha-controles">
-            <input type="text" id="in-t" value="05:00">
-            <button onclick="setPre('02:00')">2 Min</button>
-            <button onclick="setPre('05:00')">5 Min</button>
-            <button onclick="setPre('15:00')">15 Min</button>
+            <input type="text" id="in-t" placeholder="0000">
+            <button onclick="setPre('0200')">2 Min</button>
+            <button onclick="setPre('0500')">5 Min</button>
+            <button onclick="setPre('1500')">15 Min</button>
         </div>
 
         <div class="linha-controles">
             <button id="btn-main" onclick="acaoPrincipal()">Iniciar</button>
             <button class="btn-danger" onclick="pararTudo()">Desativar</button>
             <button onclick="resetarTotal()">Resetar</button>
-            <button class="btn-obs" id="btn-vis-on" onclick="toggleOBS(true)">Mostrar OBS</button>
-            <button class="btn-obs" id="btn-vis-off" onclick="toggleOBS(false)">Ocultar</button>
+            <button class="btn-obs" onclick="toggleOBS(true)">Mostrar OBS</button>
+            <button class="btn-obs" onclick="toggleOBS(false)">Ocultar</button>
         </div>
     </div>
 
@@ -172,284 +152,142 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
+        
         const disp = document.getElementById('tempo-display');
         const inputTempo = document.getElementById('in-t');
         const btnMain = document.getElementById('btn-main');
 
-        let ticker, totalSegundos = 300, rodando = false, visivel = false;
+        let ticker = null;
+        let totalSegundos = 300;
+        let rodando = false;
+        let visivel = false;
         let tempoOriginalSegundos = 300;
 
-        // ── ÁUDIO – sirene garantida em mobile e desktop ────────────────────
-        //
-        // O problema: setInterval NÃO é um gesto do usuário.
-        // Solução: criamos o AudioContext e fazemos um beep mudo
-        // DENTRO do onclick de cada botão. Quando a sirene for
-        // disparada pelo ticker, o contexto já está "running".
-        //
+        // --- ÁUDIO ---
         let audioCtx = null;
-        let sireneAtiva = false;
-        let _osc = null, _lfo = null, _gain = null;
+        let bipInterval = null;
 
-        function getCtx() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            return audioCtx;
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
         }
 
-        // Deve ser chamado DENTRO de event handlers (onclick, touchstart).
-        // Cria o contexto e toca um beep silencioso para desbloqueá-lo.
-        function forcarAudio() {
-            const ctx = getCtx();
-            if (ctx.state === 'suspended') {
-                ctx.resume();
-            }
-            // Beep mudo de 10 ms — mantém o contexto "running" no iOS
-            try {
-                const g = ctx.createGain();
-                g.gain.setValueAtTime(0.0001, ctx.currentTime);
-                const o = ctx.createOscillator();
-                o.connect(g);
-                g.connect(ctx.destination);
-                o.start(ctx.currentTime);
-                o.stop(ctx.currentTime + 0.01);
-            } catch(e) {}
-        }
-
-        function tocarSirene() {
-            if (sireneAtiva) return;
-            const ctx = getCtx();
-
-            // Tenta resumir o contexto (necessário se vier do setInterval no iOS)
-            // Não bloqueia: se não conseguir agora, silencia — na próxima chamada tenta de novo
-            if (ctx.state === 'suspended') {
-                ctx.resume().then(() => tocarSireneAgora(ctx)).catch(() => {});
-            } else if (ctx.state === 'running') {
-                tocarSireneAgora(ctx);
-            }
-            // state === 'closed': não faz nada
-        }
-
-        function tocarSireneAgora(ctx) {
-            if (sireneAtiva) return;
-            sireneAtiva = true;
-            const now = ctx.currentTime;
-
-            // Oscilador principal – sawtooth (penetrante)
-            _osc = ctx.createOscillator();
-            _osc.type = 'sawtooth';
-            _osc.frequency.setValueAtTime(950, now);
-
-            // LFO – modula freq entre ~500 Hz e ~1400 Hz (efeito wail)
-            _lfo = ctx.createOscillator();
-            _lfo.type = 'sine';
-            _lfo.frequency.setValueAtTime(1.2, now);
-            const lfoGain = ctx.createGain();
-            lfoGain.gain.setValueAtTime(450, now);
-            _lfo.connect(lfoGain);
-            lfoGain.connect(_osc.frequency);
-
-            // Gain + compressor (maximiza volume percebido no celular)
-            _gain = ctx.createGain();
-            _gain.gain.setValueAtTime(1.0, now);
-            const comp = ctx.createDynamicsCompressor();
-            comp.threshold.setValueAtTime(-6,  now);
-            comp.knee.setValueAtTime(3,        now);
-            comp.ratio.setValueAtTime(20,      now);
-            comp.attack.setValueAtTime(0,      now);
-            comp.release.setValueAtTime(0.1,   now);
-
-            _osc.connect(_gain);
-            _gain.connect(comp);
-            comp.connect(ctx.destination);
-
-            _lfo.start(now);
-            _osc.start(now);
-        }
-
-        function pararSirene() {
-            if (!sireneAtiva) return;
-            sireneAtiva = false;
-            try {
+        function tocarBip() {
+            if (bipInterval) return;
+            initAudio();
+            bipInterval = setInterval(() => {
                 const now = audioCtx.currentTime;
-                _gain.gain.setTargetAtTime(0, now, 0.03); // fade-out 30 ms
-                const o = _osc, l = _lfo;
-                setTimeout(() => {
-                    try { o.stop(); } catch(e) {}
-                    try { l.stop(); } catch(e) {}
-                }, 200);
-            } catch(e) {}
-            _osc = null; _lfo = null; _gain = null;
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.type = 'square';
+                osc.frequency.setValueAtTime(3000, now);
+                gain.gain.setValueAtTime(0, now);
+                gain.gain.linearRampToValueAtTime(0.8, now + 0.01);
+                gain.gain.setValueAtTime(0.8, now + 0.1);
+                gain.gain.linearRampToValueAtTime(0, now + 0.15);
+                osc.connect(gain); gain.connect(audioCtx.destination);
+                osc.start(now); osc.stop(now + 0.15);
+            }, 250);
         }
 
-        // Reforço: desbloqueia em qualquer toque na página (iOS Safari)
-        document.addEventListener('touchstart', forcarAudio, { passive: true });
-        document.addEventListener('pointerdown', forcarAudio, { once: true });
-        // ────────────────────────────────────────────────────────────────────
+        function pararBip() { if (bipInterval) { clearInterval(bipInterval); bipInterval = null; } }
 
-        // ── Persistência local (localStorage) ───────────────────────────────
-        const LS_KEY = 'cronometro_estado';
-
-        function salvarLocal() {
-            try {
-                localStorage.setItem(LS_KEY, JSON.stringify({
-                    totalSegundos,
-                    tempoOriginalSegundos,
-                    rodando,
-                    timestamp: Date.now()
-                }));
-            } catch(e) {}
+        // --- LÓGICA DE ENTRADA ESTILO MICROONDAS ---
+        function processarEntradaMicroondas(texto) {
+            // Remove tudo que não for número
+            let numeros = texto.replace(/\D/g, '');
+            if (!numeros) return 0;
+            
+            // Pega os últimos 4 dígitos (ex: 1000 vira 10 e 00)
+            let n = numeros.padStart(4, '0').slice(-4);
+            let m = parseInt(n.substring(0, 2));
+            let s = parseInt(n.substring(2, 4));
+            
+            return (m * 60) + s;
         }
 
-        function restaurarLocal() {
-            try {
-                const raw = localStorage.getItem(LS_KEY);
-                if (!raw) return false;
-                const estado = JSON.parse(raw);
+        function atualizarInterface() {
+            const abs = Math.abs(totalSegundos);
+            const m = Math.floor(abs / 60), s = abs % 60;
+            const texto = `${totalSegundos < 0 ? '-' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+            disp.innerText = texto;
+            // No input, mostramos apenas os números para facilitar a lógica de entrada
+            inputTempo.value = m.toString().padStart(2, '0') + s.toString().padStart(2, '0');
 
-                tempoOriginalSegundos = estado.tempoOriginalSegundos ?? 300;
-                let seg = estado.totalSegundos ?? 300;
-
-                // Se estava rodando, desconta o tempo passado enquanto fechado
-                if (estado.rodando && estado.timestamp) {
-                    const decorrido = Math.floor((Date.now() - estado.timestamp) / 1000);
-                    seg -= decorrido;
-                }
-
-                totalSegundos = seg;
-
-                const abs = Math.abs(totalSegundos);
-                const m = Math.floor(abs / 60), s = abs % 60;
-                const texto = `${totalSegundos < 0 ? '-' : ''}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-                disp.innerText = texto;
-                inputTempo.value = texto;
-
-                if (totalSegundos < 0) disp.className = 'excedido';
-                else if (totalSegundos <= 30) disp.className = 'urgente';
-                else disp.className = '';
-
-                return true;
-            } catch(e) { return false; }
+            if (totalSegundos < 0) {
+                disp.className = 'excedido';
+                if (totalSegundos >= -10) { disp.classList.add('tremendo'); tocarBip(); }
+                else { disp.classList.remove('tremendo'); pararBip(); }
+            } else if (totalSegundos <= 30) { disp.className = 'urgente'; pararBip(); }
+            else { disp.className = ''; pararBip(); }
         }
-        // ────────────────────────────────────────────────────────────────────
 
-        function subir() {
-            salvarLocal();
+        function sincronizar() {
+            localStorage.setItem('cronometro_save', JSON.stringify({ totalSegundos, tempoOriginalSegundos, rodando, ts: Date.now() }));
             set(ref(db, 'sessao'), { t: disp.innerText, c: disp.className, v: visivel });
         }
 
-        function formatarEntrada(texto) {
-            let apenasNumeros = texto.replace(/\D/g, '');
-            if (!apenasNumeros) return "00:00";
-            let num = parseInt(apenasNumeros);
-            let m = Math.floor(num / 100);
-            let s = num % 100;
-            if (s > 59) s = 59;
-            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        }
-
-        function definirNovoTempo(texto) {
-            forcarAudio();
-            const limpo = formatarEntrada(texto);
-            disp.innerText = limpo;
-            inputTempo.value = limpo;
-            let p = limpo.split(':');
-            totalSegundos = (parseInt(p[0]) * 60) + parseInt(p[1]);
-            tempoOriginalSegundos = totalSegundos;
-            disp.className = '';
-            pararSirene();
-            subir();
-        }
-
         window.acaoPrincipal = () => {
-            forcarAudio();
+            initAudio();
             if (rodando) {
-                clearInterval(ticker);
-                rodando = false;
-                btnMain.innerText = "Iniciar";
-                btnMain.classList.remove('btn-pausar');
-                disp.contentEditable = "true";
-                disp.classList.remove('tremendo');
-                pararSirene();
+                clearInterval(ticker); rodando = false;
+                btnMain.innerText = "Iniciar"; btnMain.classList.remove('btn-pausar');
+                pararBip();
             } else {
-                rodando = true;
-                btnMain.innerText = "Pausar";
-                btnMain.classList.add('btn-pausar');
-                disp.contentEditable = "false";
-
-                ticker = setInterval(() => {
-                    totalSegundos--;
-                    const abs = Math.abs(totalSegundos);
-                    const m = Math.floor(abs / 60), s = abs % 60;
-                    const tempoTexto = `${totalSegundos < 0 ? '-' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-
-                    disp.innerText = tempoTexto;
-                    inputTempo.value = tempoTexto;
-
-                    if (totalSegundos < 0) {
-                        disp.className = 'excedido';
-                        if (totalSegundos >= -10) {
-                            // Primeiros 10 segundos além do limite: sirene + tremor
-                            disp.classList.add('tremendo');
-                            tocarSirene();
-                        } else {
-                            // Depois de -10 s: para a sirene, mantém cor vermelha
-                            disp.classList.remove('tremendo');
-                            pararSirene();
-                        }
-                    } else if (totalSegundos <= 30) {
-                        disp.className = 'urgente';
-                        pararSirene();
-                    } else {
-                        disp.className = '';
-                        pararSirene();
-                    }
-                    subir();
-                }, 1000);
+                rodando = true; btnMain.innerText = "Pausar"; btnMain.classList.add('btn-pausar');
+                ticker = setInterval(() => { totalSegundos--; atualizarInterface(); sincronizar(); }, 1000);
             }
+            sincronizar();
         };
 
         window.resetarTotal = () => {
-            forcarAudio();
-            clearInterval(ticker);
-            rodando = false;
-            btnMain.innerText = "Iniciar";
-            btnMain.classList.remove('btn-pausar');
-            disp.contentEditable = "true";
+            clearInterval(ticker); rodando = false;
             totalSegundos = tempoOriginalSegundos;
-            const abs = Math.abs(totalSegundos);
-            const m = Math.floor(abs / 60), s = abs % 60;
-            disp.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-            inputTempo.value = disp.innerText;
-            disp.className = '';
-            pararSirene();
-            subir();
+            btnMain.innerText = "Iniciar"; btnMain.classList.remove('btn-pausar');
+            pararBip(); atualizarInterface(); sincronizar();
         };
 
-        window.pararTudo = () => { resetarTotal(); toggleOBS(false); };
+        window.setPre = (val) => {
+            tempoOriginalSegundos = processarEntradaMicroondas(val);
+            totalSegundos = tempoOriginalSegundos;
+            atualizarInterface(); sincronizar();
+        };
 
         window.toggleOBS = (v) => {
-            forcarAudio();
             visivel = v;
             const st = document.getElementById('status-obs');
             st.innerText = v ? "OBS: AO VIVO 🟢" : "OBS: OCULTO 🔴";
             v ? st.classList.add('status-on') : st.classList.remove('status-on');
-            subir();
+            sincronizar();
         };
 
-        inputTempo.onblur = () => definirNovoTempo(inputTempo.value);
-        disp.onblur = () => definirNovoTempo(disp.innerText);
-        disp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); disp.blur(); } };
-        window.setPre = (v) => { definirNovoTempo(v); };
+        window.pararTudo = () => { window.resetarTotal(); window.toggleOBS(false); };
 
-        setInterval(() => {
-            document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT');
-        }, 1000);
+        disp.onblur = () => { 
+            totalSegundos = processarEntradaMicroondas(disp.innerText); 
+            tempoOriginalSegundos = totalSegundos;
+            atualizarInterface(); sincronizar(); 
+        };
+        inputTempo.onblur = () => { 
+            totalSegundos = processarEntradaMicroondas(inputTempo.value); 
+            tempoOriginalSegundos = totalSegundos;
+            atualizarInterface(); sincronizar(); 
+        };
+        disp.onkeydown = (e) => { if(e.key === 'Enter') { e.preventDefault(); disp.blur(); } };
 
-        // Restaura estado salvo; se não houver, começa em 05:00
-        if (!restaurarLocal()) {
-            definirNovoTempo("05:00");
+        setInterval(() => { document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); }, 1000);
+
+        const saved = localStorage.getItem('cronometro_save');
+        if (saved) {
+            const data = JSON.parse(saved);
+            totalSegundos = data.totalSegundos;
+            tempoOriginalSegundos = data.tempoOriginalSegundos;
+            if (data.rodando) {
+                totalSegundos -= Math.floor((Date.now() - data.ts) / 1000);
+                window.acaoPrincipal();
+            }
         }
+        atualizarInterface();
     </script>
 </body>
 </html>
