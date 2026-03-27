@@ -158,11 +158,6 @@
         </div>
     </div>
 
-    <audio id="sirene" preload="auto">
-        <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
-        <source src="https://www.soundjay.com/buttons/beep-07.mp3" type="audio/mpeg">
-    </audio>
-
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
@@ -180,18 +175,110 @@
         const disp = document.getElementById('tempo-display');
         const inputTempo = document.getElementById('in-t');
         const btnMain = document.getElementById('btn-main');
-        const sireneSom = document.getElementById('sirene');
 
         let ticker, totalSegundos = 300, rodando = false, visivel = false;
-        let tempoOriginalSegundos = 300; 
+        let tempoOriginalSegundos = 300;
 
-        // Função para forçar o desbloqueio do áudio
-        function forcarAudio() {
-            sireneSom.play().then(() => {
-                sireneSom.pause();
-                sireneSom.currentTime = 0;
-            }).catch(e => console.log("Audio aguardando interação"));
+        // ── Web Audio API – sirene (desktop + mobile) ───────────────────────
+        let audioCtx = null;
+        let sireneAtiva = false;
+        // Referências dos nós ativos para poder parar depois
+        let _osc = null, _lfo = null, _gain = null;
+
+        /**
+         * Retorna (ou cria) o AudioContext e garante que está rodando.
+         * No iOS o contexto nasce "suspended"; .resume() só funciona
+         * dentro de um event handler de toque – por isso chamamos
+         * forcarAudio() em CADA onclick antes de qualquer lógica.
+         */
+        function getAudioCtx() {
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();          // precisa estar num event handler
+            }
+            return audioCtx;
         }
+
+        /**
+         * Sirene de alta intensidade:
+         *  - Oscilador sawtooth (rico em harmônicos, penetrante)
+         *  - LFO modulando freq entre ~500 Hz e ~1400 Hz (efeito wail)
+         *  - DynamicsCompressor no final: maximiza volume percebido no celular
+         *    sem distorcer e sem ser cortado pelo limitador do sistema
+         */
+        function tocarSirene() {
+            if (sireneAtiva) return;
+            sireneAtiva = true;
+
+            const ctx = getAudioCtx();
+            const now = ctx.currentTime;
+
+            // — Oscilador principal —
+            _osc = ctx.createOscillator();
+            _osc.type = 'sawtooth';
+            _osc.frequency.setValueAtTime(950, now);
+
+            // — LFO (1 Hz, ±450 Hz de swing → 500..1400 Hz) —
+            _lfo = ctx.createOscillator();
+            _lfo.type = 'sine';
+            _lfo.frequency.setValueAtTime(1.0, now);
+            const lfoGain = ctx.createGain();
+            lfoGain.gain.setValueAtTime(450, now);
+            _lfo.connect(lfoGain);
+            lfoGain.connect(_osc.frequency);
+
+            // — Gain: volume máximo —
+            _gain = ctx.createGain();
+            _gain.gain.setValueAtTime(1.0, now);
+
+            // — Compressor: soa mais alto no celular sem clipar —
+            const comp = ctx.createDynamicsCompressor();
+            comp.threshold.setValueAtTime(-6, now);   // dB
+            comp.knee.setValueAtTime(3, now);
+            comp.ratio.setValueAtTime(20, now);
+            comp.attack.setValueAtTime(0, now);
+            comp.release.setValueAtTime(0.1, now);
+
+            _osc.connect(_gain);
+            _gain.connect(comp);
+            comp.connect(ctx.destination);
+
+            _lfo.start(now);
+            _osc.start(now);
+        }
+
+        function pararSirene() {
+            if (!sireneAtiva) return;
+            sireneAtiva = false;
+            try {
+                const now = audioCtx.currentTime;
+                // Fade-out de 80 ms para não clicar
+                _gain.gain.setTargetAtTime(0, now, 0.03);
+                const o = _osc, l = _lfo;
+                setTimeout(() => {
+                    try { o.stop(); } catch(e) {}
+                    try { l.stop(); } catch(e) {}
+                }, 250);
+            } catch(e) {}
+            _osc = null; _lfo = null; _gain = null;
+        }
+
+        /**
+         * Deve ser chamado DENTRO de cada event handler (onclick).
+         * Isso garante que o iOS desbloqueie o AudioContext no primeiro toque.
+         */
+        function forcarAudio() {
+            getAudioCtx();
+        }
+
+        // Desbloqueia também em qualquer toque na página (fallback para iOS)
+        document.addEventListener('touchstart', () => {
+            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
+        }, { once: false, passive: true });
+
+        // ────────────────────────────────────────────────────────────────────
 
         function subir() {
             set(ref(db, 'sessao'), { t: disp.innerText, c: disp.className, v: visivel });
@@ -214,9 +301,9 @@
             inputTempo.value = limpo;
             let p = limpo.split(':');
             totalSegundos = (parseInt(p[0]) * 60) + parseInt(p[1]);
-            tempoOriginalSegundos = totalSegundos; 
-            disp.className = ''; 
-            sireneSom.pause();
+            tempoOriginalSegundos = totalSegundos;
+            disp.className = '';
+            pararSirene();
             subir();
         }
 
@@ -229,7 +316,7 @@
                 btnMain.classList.remove('btn-pausar');
                 disp.contentEditable = "true";
                 disp.classList.remove('tremendo');
-                sireneSom.pause();
+                pararSirene();
             } else {
                 rodando = true;
                 btnMain.innerText = "Pausar";
@@ -239,27 +326,29 @@
                 ticker = setInterval(() => {
                     totalSegundos--;
                     const abs = Math.abs(totalSegundos);
-                    const m = Math.floor(abs/60), s = abs%60;
-                    const tempoTexto = `${totalSegundos < 0 ? '-' : ''}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
-                    
+                    const m = Math.floor(abs / 60), s = abs % 60;
+                    const tempoTexto = `${totalSegundos < 0 ? '-' : ''}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+
                     disp.innerText = tempoTexto;
                     inputTempo.value = tempoTexto;
 
                     if (totalSegundos < 0) {
                         disp.className = 'excedido';
                         if (totalSegundos >= -10) {
+                            // Primeiros 10 segundos além do limite: sirene + tremor
                             disp.classList.add('tremendo');
-                            sireneSom.currentTime = 0;
-                            sireneSom.volume = 1.0;
-                            sireneSom.play().catch(() => {});
+                            tocarSirene();
                         } else {
+                            // Depois de -10 s: para a sirene, mantém cor vermelha
                             disp.classList.remove('tremendo');
-                            sireneSom.pause();
+                            pararSirene();
                         }
                     } else if (totalSegundos <= 30) {
                         disp.className = 'urgente';
+                        pararSirene();
                     } else {
                         disp.className = '';
+                        pararSirene();
                     }
                     subir();
                 }, 1000);
@@ -275,11 +364,11 @@
             disp.contentEditable = "true";
             totalSegundos = tempoOriginalSegundos;
             const abs = Math.abs(totalSegundos);
-            const m = Math.floor(abs/60), s = abs%60;
-            disp.innerText = `${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+            const m = Math.floor(abs / 60), s = abs % 60;
+            disp.innerText = `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
             inputTempo.value = disp.innerText;
             disp.className = '';
-            sireneSom.pause();
+            pararSirene();
             subir();
         };
 
@@ -296,11 +385,11 @@
 
         inputTempo.onblur = () => definirNovoTempo(inputTempo.value);
         disp.onblur = () => definirNovoTempo(disp.innerText);
-        disp.onkeydown = (e) => { if(e.key === "Enter") { e.preventDefault(); disp.blur(); } };
-        window.setPre = (v) => { definirNovoTempo(v); }
-        
-        setInterval(() => { 
-            document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); 
+        disp.onkeydown = (e) => { if (e.key === "Enter") { e.preventDefault(); disp.blur(); } };
+        window.setPre = (v) => { definirNovoTempo(v); };
+
+        setInterval(() => {
+            document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT');
         }, 1000);
 
         definirNovoTempo("05:00");
