@@ -280,7 +280,54 @@
 
         // ────────────────────────────────────────────────────────────────────
 
+        // ── Persistência local (localStorage) ───────────────────────────────
+        const LS_KEY = 'cronometro_estado';
+
+        function salvarLocal() {
+            try {
+                localStorage.setItem(LS_KEY, JSON.stringify({
+                    totalSegundos,
+                    tempoOriginalSegundos,
+                    rodando,
+                    timestamp: Date.now()
+                }));
+            } catch(e) {}
+        }
+
+        function restaurarLocal() {
+            try {
+                const raw = localStorage.getItem(LS_KEY);
+                if (!raw) return false;
+                const estado = JSON.parse(raw);
+
+                tempoOriginalSegundos = estado.tempoOriginalSegundos ?? 300;
+                let seg = estado.totalSegundos ?? 300;
+
+                // Se estava rodando, desconta o tempo passado enquanto fechado
+                if (estado.rodando && estado.timestamp) {
+                    const decorrido = Math.floor((Date.now() - estado.timestamp) / 1000);
+                    seg -= decorrido;
+                }
+
+                totalSegundos = seg;
+
+                const abs = Math.abs(totalSegundos);
+                const m = Math.floor(abs / 60), s = abs % 60;
+                const texto = `${totalSegundos < 0 ? '-' : ''}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+                disp.innerText = texto;
+                inputTempo.value = texto;
+
+                if (totalSegundos < 0) disp.className = 'excedido';
+                else if (totalSegundos <= 30) disp.className = 'urgente';
+                else disp.className = '';
+
+                return true;
+            } catch(e) { return false; }
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         function subir() {
+            salvarLocal();
             set(ref(db, 'sessao'), { t: disp.innerText, c: disp.className, v: visivel });
         }
 
@@ -392,7 +439,10 @@
             document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT');
         }, 1000);
 
-        definirNovoTempo("05:00");
+        // Restaura estado salvo; se não houver, começa em 05:00
+        if (!restaurarLocal()) {
+            definirNovoTempo("05:00");
+        }
     </script>
 </body>
 </html>
