@@ -47,7 +47,7 @@
         #topo-relogio { 
             background: var(--verde-primario); 
             padding: 12px; 
-            font-size: clamp(20px, 4vw, 32px); 
+            font-size: clamp(18px, 4vw, 32px); 
             font-weight: 800; 
             border-radius: 20px 20px 0 0; 
             text-align: center;
@@ -65,7 +65,7 @@
         }
         
         #tempo-display { 
-            font-size: clamp(60px, 22vw, 240px); 
+            font-size: clamp(50px, 20vw, 240px); 
             font-weight: 800; 
             color: var(--branco); 
             line-height: 1; 
@@ -75,7 +75,6 @@
             white-space: nowrap;
             background: transparent;
             border: none;
-            /* Resolve bordas pretas no iPhone ao editar */
             -webkit-user-modify: read-write-plaintext-only;
         }
         
@@ -101,7 +100,7 @@
 
         input { 
             background: #000; border: 2px solid #333; color: #55E21F; 
-            padding: 10px; width: 120px; text-align: center; 
+            padding: 10px; width: 130px; text-align: center; 
             font-size: 20px; font-weight: 700; border-radius: 10px;
             -webkit-appearance: none;
         }
@@ -109,18 +108,24 @@
         button { 
             padding: 12px 15px; border: none; border-radius: 8px; 
             font-weight: 700; cursor: pointer; text-transform: uppercase; 
-            font-size: 10px; background: var(--verde-primario); 
-            color: white; border-bottom: 3px solid #044419;
-            flex: 1; min-width: 100px;
+            font-size: 10px; background: #333; /* Cor padrão cinza */
+            color: white; border-bottom: 3px solid #111;
+            flex: 1; min-width: 90px;
+            transition: 0.2s;
         }
         
         button:active { transform: translateY(2px); border-bottom-width: 1px; }
+
+        /* Estilos Específicos */
+        .btn-verde-ativa { background: var(--verde-primario) !important; border-bottom-color: #044419 !important; }
+        .btn-vermelha-ativa { background: #b71c1c !important; border-bottom-color: #5f0a0a !important; }
+        
+        .btn-acao { background: var(--verde-primario); border-bottom-color: #044419; }
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-danger { background: #8b0000 !important; border-bottom-color: #4b0000 !important; }
-        .btn-obs { background: #333; border-bottom-color: #111; }
 
         @media (max-width: 480px) {
-            button { min-width: 46%; }
+            button { min-width: 45%; }
         }
     </style>
 </head>
@@ -137,18 +142,18 @@
     
     <div id="controles">
         <div class="linha-controles">
-            <input type="text" id="in-t" placeholder="0000" inputmode="numeric">
-            <button onclick="setPre('0200')">2 Min</button>
-            <button onclick="setPre('0500')">5 Min</button>
-            <button onclick="setPre('1500')">15 Min</button>
+            <input type="text" id="in-t" placeholder="00:00">
+            <button class="btn-acao" onclick="setPre('0200')">2 Min</button>
+            <button class="btn-acao" onclick="setPre('0500')">5 Min</button>
+            <button class="btn-acao" onclick="setPre('1500')">15 Min</button>
         </div>
 
         <div class="linha-controles">
-            <button id="btn-main" onclick="acaoPrincipal()">Iniciar</button>
+            <button id="btn-main" class="btn-acao" onclick="acaoPrincipal()">Iniciar</button>
             <button class="btn-danger" onclick="pararTudo()">Desativar</button>
-            <button onclick="resetarTotal()">Resetar</button>
-            <button class="btn-obs" onclick="toggleOBS(true)">Mostrar OBS</button>
-            <button class="btn-obs" onclick="toggleOBS(false)">Ocultar</button>
+            <button class="btn-acao" onclick="resetarTotal()">Resetar</button>
+            <button id="btn-show" onclick="toggleOBS(true)">Mostrar OBS</button>
+            <button id="btn-hide" onclick="toggleOBS(false)">Ocultar</button>
         </div>
     </div>
 
@@ -170,6 +175,8 @@
         const disp = document.getElementById('tempo-display');
         const inputTempo = document.getElementById('in-t');
         const btnMain = document.getElementById('btn-main');
+        const btnShow = document.getElementById('btn-show');
+        const btnHide = document.getElementById('btn-hide');
 
         let ticker = null;
         let totalSegundos = 120;
@@ -205,8 +212,7 @@
 
         function pararBip() { if (bipInterval) { clearInterval(bipInterval); bipInterval = null; } }
 
-        // --- LÓGICA DE SINCRONIZAÇÃO E MÁQUINA DE CALCULAR ---
-        function formatarParaDisplay(segundos) {
+        function formatarTempo(segundos) {
             const sinal = segundos < 0 ? '-' : '';
             const abs = Math.abs(segundos);
             const m = Math.floor(abs / 60);
@@ -223,17 +229,11 @@
             return (m * 60) + s;
         }
 
-        function atualizarTudo() {
-            const tempoTexto = formatarParaDisplay(totalSegundos);
+        function atualizarInterface() {
+            const tempoTexto = formatarTempo(totalSegundos);
             disp.innerText = tempoTexto;
-            
-            // O input pequeno recebe apenas os números brutos (ex: 0200 para 02:00)
-            const abs = Math.abs(totalSegundos);
-            const m = Math.floor(abs / 60);
-            const s = abs % 60;
-            inputTempo.value = m.toString().padStart(2, '0') + s.toString().padStart(2, '0');
+            inputTempo.value = tempoTexto.replace('-', '');
 
-            // Cores e Alarmes
             if (totalSegundos < 0) {
                 disp.className = 'excedido';
                 if (totalSegundos >= -10) { disp.classList.add('tremendo'); tocarBip(); }
@@ -246,7 +246,7 @@
         }
 
         function sincronizarFirebase() {
-            localStorage.setItem('cronometro_v2_save', JSON.stringify({
+            localStorage.setItem('cronometro_vFinal', JSON.stringify({
                 totalSegundos, tempoOriginalSegundos, rodando, visivel, ts: Date.now()
             }));
             set(ref(db, 'sessao'), { t: disp.innerText, c: disp.className, v: visivel });
@@ -260,7 +260,7 @@
                 pararBip();
             } else {
                 rodando = true; btnMain.innerText = "Pausar"; btnMain.classList.add('btn-pausar');
-                ticker = setInterval(() => { totalSegundos--; atualizarTudo(); sincronizarFirebase(); }, 1000);
+                ticker = setInterval(() => { totalSegundos--; atualizarInterface(); sincronizarFirebase(); }, 1000);
             }
             sincronizarFirebase();
         };
@@ -270,46 +270,54 @@
             clearInterval(ticker); rodando = false;
             totalSegundos = tempoOriginalSegundos;
             btnMain.innerText = "Iniciar"; btnMain.classList.remove('btn-pausar');
-            pararBip(); atualizarTudo(); sincronizarFirebase();
+            pararBip(); atualizarInterface(); sincronizarFirebase();
         };
 
         window.setPre = (val) => {
             unlockAudio();
             tempoOriginalSegundos = converterParaSegundos(val);
             totalSegundos = tempoOriginalSegundos;
-            atualizarTudo(); sincronizarFirebase();
+            atualizarInterface(); sincronizarFirebase();
         };
 
         window.toggleOBS = (v) => {
             unlockAudio();
             visivel = v;
             const st = document.getElementById('status-obs');
-            st.innerText = v ? "OBS: AO VIVO 🟢" : "OBS: OCULTO 🔴";
-            v ? st.classList.add('status-on') : st.classList.remove('status-on');
+            
+            if (v) {
+                st.innerText = "OBS: AO VIVO 🟢";
+                st.classList.add('status-on');
+                btnShow.classList.add('btn-verde-ativa');
+                btnHide.classList.remove('btn-vermelha-ativa');
+            } else {
+                st.innerText = "OBS: OCULTO 🔴";
+                st.classList.remove('status-on');
+                btnHide.classList.add('btn-vermelha-ativa');
+                btnShow.classList.remove('btn-verde-ativa');
+            }
             sincronizarFirebase();
         };
 
         window.pararTudo = () => { window.resetarTotal(); window.toggleOBS(false); };
 
-        // SINCRONIA: Quando você edita o número grande
         disp.onblur = () => { 
             totalSegundos = converterParaSegundos(disp.innerText); 
             tempoOriginalSegundos = totalSegundos;
-            atualizarTudo(); sincronizarFirebase(); 
+            atualizarInterface(); sincronizarFirebase(); 
         };
-
-        // SINCRONIA: Quando você edita o input pequeno
         inputTempo.onblur = () => { 
             totalSegundos = converterParaSegundos(inputTempo.value); 
             tempoOriginalSegundos = totalSegundos;
-            atualizarTudo(); sincronizarFirebase(); 
+            atualizarInterface(); sincronizarFirebase(); 
         };
 
         disp.onkeydown = (e) => { if(e.key === 'Enter') { e.preventDefault(); disp.blur(); } };
+        inputTempo.onkeydown = (e) => { if(e.key === 'Enter') { e.preventDefault(); inputTempo.blur(); } };
 
         setInterval(() => { document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); }, 1000);
 
-        const saved = localStorage.getItem('cronometro_v2_save');
+        const saved = localStorage.getItem('cronometro_vFinal');
         if (saved) {
             const data = JSON.parse(saved);
             totalSegundos = data.totalSegundos;
@@ -320,9 +328,12 @@
                 window.acaoPrincipal();
             }
             window.toggleOBS(visivel);
+        } else {
+            // Estado inicial padrão
+            window.toggleOBS(false);
         }
         
-        atualizarTudo();
+        atualizarInterface();
     </script>
 </body>
 </html>
