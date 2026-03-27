@@ -179,67 +179,85 @@
         let ticker, totalSegundos = 300, rodando = false, visivel = false;
         let tempoOriginalSegundos = 300;
 
-        // ── Web Audio API – sirene (desktop + mobile) ───────────────────────
+        // ── ÁUDIO – sirene garantida em mobile e desktop ────────────────────
+        //
+        // O problema: setInterval NÃO é um gesto do usuário.
+        // Solução: criamos o AudioContext e fazemos um beep mudo
+        // DENTRO do onclick de cada botão. Quando a sirene for
+        // disparada pelo ticker, o contexto já está "running".
+        //
         let audioCtx = null;
         let sireneAtiva = false;
-        // Referências dos nós ativos para poder parar depois
         let _osc = null, _lfo = null, _gain = null;
 
-        /**
-         * Retorna (ou cria) o AudioContext e garante que está rodando.
-         * No iOS o contexto nasce "suspended"; .resume() só funciona
-         * dentro de um event handler de toque – por isso chamamos
-         * forcarAudio() em CADA onclick antes de qualquer lógica.
-         */
-        function getAudioCtx() {
+        function getCtx() {
             if (!audioCtx) {
                 audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();          // precisa estar num event handler
             }
             return audioCtx;
         }
 
-        /**
-         * Sirene de alta intensidade:
-         *  - Oscilador sawtooth (rico em harmônicos, penetrante)
-         *  - LFO modulando freq entre ~500 Hz e ~1400 Hz (efeito wail)
-         *  - DynamicsCompressor no final: maximiza volume percebido no celular
-         *    sem distorcer e sem ser cortado pelo limitador do sistema
-         */
+        // Deve ser chamado DENTRO de event handlers (onclick, touchstart).
+        // Cria o contexto e toca um beep silencioso para desbloqueá-lo.
+        function forcarAudio() {
+            const ctx = getCtx();
+            if (ctx.state === 'suspended') {
+                ctx.resume();
+            }
+            // Beep mudo de 10 ms — mantém o contexto "running" no iOS
+            try {
+                const g = ctx.createGain();
+                g.gain.setValueAtTime(0.0001, ctx.currentTime);
+                const o = ctx.createOscillator();
+                o.connect(g);
+                g.connect(ctx.destination);
+                o.start(ctx.currentTime);
+                o.stop(ctx.currentTime + 0.01);
+            } catch(e) {}
+        }
+
         function tocarSirene() {
             if (sireneAtiva) return;
-            sireneAtiva = true;
+            const ctx = getCtx();
 
-            const ctx = getAudioCtx();
+            // Tenta resumir o contexto (necessário se vier do setInterval no iOS)
+            // Não bloqueia: se não conseguir agora, silencia — na próxima chamada tenta de novo
+            if (ctx.state === 'suspended') {
+                ctx.resume().then(() => tocarSireneAgora(ctx)).catch(() => {});
+            } else if (ctx.state === 'running') {
+                tocarSireneAgora(ctx);
+            }
+            // state === 'closed': não faz nada
+        }
+
+        function tocarSireneAgora(ctx) {
+            if (sireneAtiva) return;
+            sireneAtiva = true;
             const now = ctx.currentTime;
 
-            // — Oscilador principal —
+            // Oscilador principal – sawtooth (penetrante)
             _osc = ctx.createOscillator();
             _osc.type = 'sawtooth';
             _osc.frequency.setValueAtTime(950, now);
 
-            // — LFO (1 Hz, ±450 Hz de swing → 500..1400 Hz) —
+            // LFO – modula freq entre ~500 Hz e ~1400 Hz (efeito wail)
             _lfo = ctx.createOscillator();
             _lfo.type = 'sine';
-            _lfo.frequency.setValueAtTime(1.0, now);
+            _lfo.frequency.setValueAtTime(1.2, now);
             const lfoGain = ctx.createGain();
             lfoGain.gain.setValueAtTime(450, now);
             _lfo.connect(lfoGain);
             lfoGain.connect(_osc.frequency);
 
-            // — Gain: volume máximo —
+            // Gain + compressor (maximiza volume percebido no celular)
             _gain = ctx.createGain();
             _gain.gain.setValueAtTime(1.0, now);
-
-            // — Compressor: soa mais alto no celular sem clipar —
             const comp = ctx.createDynamicsCompressor();
-            comp.threshold.setValueAtTime(-6, now);   // dB
-            comp.knee.setValueAtTime(3, now);
-            comp.ratio.setValueAtTime(20, now);
-            comp.attack.setValueAtTime(0, now);
-            comp.release.setValueAtTime(0.1, now);
+            comp.threshold.setValueAtTime(-6,  now);
+            comp.knee.setValueAtTime(3,        now);
+            comp.ratio.setValueAtTime(20,      now);
+            comp.attack.setValueAtTime(0,      now);
+            comp.release.setValueAtTime(0.1,   now);
 
             _osc.connect(_gain);
             _gain.connect(comp);
@@ -254,30 +272,19 @@
             sireneAtiva = false;
             try {
                 const now = audioCtx.currentTime;
-                // Fade-out de 80 ms para não clicar
-                _gain.gain.setTargetAtTime(0, now, 0.03);
+                _gain.gain.setTargetAtTime(0, now, 0.03); // fade-out 30 ms
                 const o = _osc, l = _lfo;
                 setTimeout(() => {
                     try { o.stop(); } catch(e) {}
                     try { l.stop(); } catch(e) {}
-                }, 250);
+                }, 200);
             } catch(e) {}
             _osc = null; _lfo = null; _gain = null;
         }
 
-        /**
-         * Deve ser chamado DENTRO de cada event handler (onclick).
-         * Isso garante que o iOS desbloqueie o AudioContext no primeiro toque.
-         */
-        function forcarAudio() {
-            getAudioCtx();
-        }
-
-        // Desbloqueia também em qualquer toque na página (fallback para iOS)
-        document.addEventListener('touchstart', () => {
-            if (audioCtx && audioCtx.state === 'suspended') audioCtx.resume();
-        }, { once: false, passive: true });
-
+        // Reforço: desbloqueia em qualquer toque na página (iOS Safari)
+        document.addEventListener('touchstart', forcarAudio, { passive: true });
+        document.addEventListener('pointerdown', forcarAudio, { once: true });
         // ────────────────────────────────────────────────────────────────────
 
         // ── Persistência local (localStorage) ───────────────────────────────
