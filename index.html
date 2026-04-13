@@ -17,13 +17,12 @@
         * { 
             box-sizing: border-box; 
             -webkit-font-smoothing: antialiased; 
-            margin: 0; padding: 0; 
-            -webkit-tap-highlight-color: transparent; 
-            outline: none !important;
+            -moz-osx-font-smoothing: grayscale; 
         }
 
         body { 
             font-family: var(--fonte-principal); 
+            margin: 0; 
             background: var(--bg-escuro); 
             color: var(--branco); 
             display: flex; 
@@ -31,129 +30,144 @@
             align-items: center; 
             justify-content: center; 
             min-height: 100vh;
-            padding: 15px;
-            overflow: hidden;
+            padding: 20px;
         }
         
         #status-obs {
-            padding: 10px 20px; border-radius: 50px; font-weight: 700; margin-bottom: 15px;
-            font-size: 11px; text-transform: uppercase; background: #111; color: #555;
+            padding: 10px 25px; border-radius: 50px; font-weight: 700; margin-bottom: 15px;
+            font-size: 12px; text-transform: uppercase; background: #111; color: #555;
             border: 2px solid rgba(255,255,255,0.05); text-align: center;
         }
-        .status-on { background: #b71c1c !important; color: white !important; box-shadow: 0 0 20px #ff0000; animation: flash 1s infinite; }
+        .status-on { background: #b71c1c !important; color: white !important; box-shadow: 0 0 30px #ff0000; animation: flash 1s infinite; border-color: #ff4d4d !important; }
 
-        .cronometro-container { width: 100%; max-width: 850px; display: flex; flex-direction: column; }
+        @keyframes flash { 50% { opacity: 0.6; } }
+
+        .cronometro-container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+        }
 
         #topo-relogio { 
             background: var(--verde-primario); 
-            padding: 12px; 
-            font-size: clamp(18px, 4vw, 32px); 
+            padding: 20px; 
+            font-size: clamp(60px, 15vw, 120px); 
             font-weight: 800; 
-            border-radius: 20px 20px 0 0; 
-            text-align: center;
+            border-radius: 30px 30px 0 0; 
+            text-align: center; 
+            line-height: 1;
+            letter-spacing: -2px;
+            border-bottom: 4px solid rgba(0,0,0,0.2);
         }
 
         #corpo-cronometro { 
             background: var(--verde-secundario); 
-            padding: 30px 10px; 
+            padding: 40px 20px; 
             border-radius: 0 0 40px 40px; 
-            border: 6px solid var(--verde-primario); 
+            border: 8px solid var(--verde-primario); 
             border-top: none; 
             display: flex; 
             justify-content: center;
-            align-items: center;
         }
         
         #tempo-display { 
-            font-size: clamp(50px, 20vw, 240px); 
+            font-size: clamp(80px, 25vw, 280px); 
             font-weight: 800; 
             color: var(--branco); 
-            line-height: 1; 
+            line-height: 0.85; 
             font-variant-numeric: tabular-nums; 
+            outline: none; 
             text-align: center;
             width: 100%;
-            white-space: nowrap;
-            background: transparent;
-            border: none;
-            -webkit-user-modify: read-write-plaintext-only;
         }
         
         .urgente { color: #ffeb3b !important; } 
         .excedido { color: #ff4d4d !important; }
         .tremendo { animation: shake 0.1s infinite; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(3px); } 75% { transform: translateX(-3px); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(4px); } 75% { transform: translateX(-4px); } }
 
         #controles { 
-            margin-top: 20px; 
+            margin-top: 25px; 
             background: #121212; 
-            padding: 15px; 
+            padding: 20px; 
             border-radius: 20px; 
             display: flex; 
             flex-direction: column; 
-            gap: 12px; 
+            gap: 15px; 
             width: 100%;
-            max-width: 850px;
+            max-width: 900px;
             border: 1px solid #222;
         }
         
-        .linha-controles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: 100%; }
+        .linha-controles {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            width: 100%;
+        }
 
         input { 
             background: #000; border: 2px solid #333; color: #55E21F; 
-            padding: 10px; width: 130px; text-align: center; 
-            font-size: 20px; font-weight: 700; border-radius: 10px;
-            -webkit-appearance: none;
+            padding: 12px; width: 140px; text-align: center; 
+            font-size: 22px; font-weight: 700; border-radius: 12px; font-family: var(--fonte-principal);
         }
 
         button { 
-            padding: 12px 15px; border: none; border-radius: 8px; 
+            padding: 14px 18px; border: none; border-radius: 10px; 
             font-weight: 700; cursor: pointer; text-transform: uppercase; 
-            font-size: 10px; background: #333; 
-            color: white; border-bottom: 3px solid #111;
-            flex: 1; min-width: 90px;
-            transition: 0.2s;
+            font-size: 11px; letter-spacing: 0.5px; background: var(--verde-primario); 
+            color: white; border-bottom: 3px solid #044419;
+            flex: 1;
+            min-width: 100px;
         }
         
-        button:active { transform: translateY(2px); border-bottom-width: 1px; }
-
-        .btn-verde-ativa { background: var(--verde-primario) !important; border-bottom-color: #044419 !important; }
-        .btn-vermelha-ativa { background: #b71c1c !important; border-bottom-color: #5f0a0a !important; }
-        .btn-acao { background: var(--verde-primario); border-bottom-color: #044419; }
+        button:active { transform: translateY(1px); border-bottom: none; }
+        .btn-add { background: #27ae60 !important; border-bottom-color: #1e8449 !important; }
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-danger { background: #8b0000 !important; border-bottom-color: #4b0000 !important; }
+        .btn-obs { background: #333; border-bottom-color: #111; }
 
-        @media (max-width: 480px) {
-            button { min-width: 45%; }
+        @media (max-width: 600px) {
+            button { min-width: 30%; }
+            #topo-relogio { padding: 10px; }
         }
     </style>
 </head>
-<body onclick="unlockAudio()">
+<body>
 
     <div id="status-obs">Sistema Offline</div>
 
     <div class="cronometro-container">
         <div id="topo-relogio">00:00:00</div>
         <div id="corpo-cronometro">
-            <div id="tempo-display" contenteditable="true" inputmode="numeric" spellcheck="false">02:00</div>
+            <div id="tempo-display" contenteditable="true" spellcheck="false">05:00</div>
         </div>
     </div>
     
     <div id="controles">
         <div class="linha-controles">
-            <input type="text" id="in-t" placeholder="00:00">
-            <button class="btn-acao" onclick="setPre('0200')">2 Min</button>
-            <button class="btn-acao" onclick="setPre('0500')">5 Min</button>
-            <button class="btn-acao" onclick="setPre('1500')">15 Min</button>
+            <input type="text" id="in-t" value="05:00">
+            <button onclick="setPre('02:00')">2 Min</button>
+            <button onclick="setPre('05:00')">5 Min</button>
+            <button onclick="setPre('15:00')">15 Min</button>
+            <button class="btn-add" onclick="adicionarMinuto()">+1 Min</button>
         </div>
 
         <div class="linha-controles">
-            <button id="btn-main" class="btn-acao" onclick="acaoPrincipal()">Iniciar</button>
+            <button id="btn-main" onclick="acaoPrincipal()">Iniciar</button>
             <button class="btn-danger" onclick="pararTudo()">Desativar</button>
-            <button class="btn-acao" onclick="resetarTotal()">Resetar</button>
-            <button id="btn-show" onclick="toggleOBS(true)">Mostrar OBS</button>
-            <button id="btn-hide" onclick="toggleOBS(false)">Ocultar</button>
+            <button onclick="resetarTotal()">Resetar</button>
+            <button class="btn-obs" id="btn-vis-on" onclick="toggleOBS(true)">Mostrar OBS</button>
+            <button class="btn-obs" id="btn-vis-off" onclick="toggleOBS(false)">Ocultar</button>
         </div>
     </div>
+
+    <audio id="sirene" preload="auto">
+        <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg" type="audio/ogg">
+        <source src="https://www.soundjay.com/buttons/beep-07.mp3" type="audio/mpeg">
+    </audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -169,188 +183,151 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        
         const disp = document.getElementById('tempo-display');
         const inputTempo = document.getElementById('in-t');
         const btnMain = document.getElementById('btn-main');
-        const btnShow = document.getElementById('btn-show');
-        const btnHide = document.getElementById('btn-hide');
+        const sireneSom = document.getElementById('sirene');
 
-        let ticker = null;
-        let totalSegundos = 120;
-        let rodando = false;
-        let visivel = false;
-        let tempoOriginalSegundos = 120;
+        let ticker, totalSegundos = 300, rodando = false, visivel = false;
+        let tempoOriginalSegundos = 300; 
 
-        // --- SISTEMA DE ÁUDIO REFORÇADO PARA IPHONE ---
-        let audioCtx = null;
-        let bipInterval = null;
-
-        window.unlockAudio = function() {
-            if (!audioCtx) {
-                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-            }
-            if (audioCtx.state === 'suspended') {
-                audioCtx.resume();
-            }
-        };
-
-        function tocarBip() {
-            if (bipInterval) return;
-            unlockAudio();
-            bipInterval = setInterval(() => {
-                if (!audioCtx) return;
-                const now = audioCtx.currentTime;
-                const osc = audioCtx.createOscillator();
-                const gain = audioCtx.createGain();
-                
-                osc.type = 'square';
-                osc.frequency.setValueAtTime(2500, now);
-                
-                gain.gain.setValueAtTime(0, now);
-                gain.gain.linearRampToValueAtTime(1, now + 0.01);
-                gain.gain.setValueAtTime(1, now + 0.1);
-                gain.gain.linearRampToValueAtTime(0, now + 0.15);
-                
-                osc.connect(gain);
-                gain.connect(audioCtx.destination);
-                
-                osc.start(now);
-                osc.stop(now + 0.15);
-            }, 300);
+        function forcarAudio() {
+            sireneSom.play().then(() => {
+                sireneSom.pause();
+                sireneSom.currentTime = 0;
+            }).catch(e => console.log("Audio aguardando interação"));
         }
 
-        function pararBip() { 
-            if (bipInterval) { 
-                clearInterval(bipInterval); 
-                bipInterval = null; 
-            } 
-        }
-
-        // --- LÓGICA DE SINCRONIA ---
-        function formatarTempo(segundos) {
-            const sinal = segundos < 0 ? '-' : '';
-            const abs = Math.abs(segundos);
-            const m = Math.floor(abs / 60);
-            const s = abs % 60;
-            return `${sinal}${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        }
-
-        function converterParaSegundos(texto) {
-            let numeros = texto.replace(/\D/g, '');
-            if (!numeros) return 0;
-            let val = parseInt(numeros);
-            let s = val % 100;
-            let m = Math.floor(val / 100);
-            return (m * 60) + s;
-        }
-
-        function atualizarInterface() {
-            const tempoTexto = formatarTempo(totalSegundos);
-            disp.innerText = tempoTexto;
-            inputTempo.value = tempoTexto.replace('-', '');
-
-            if (totalSegundos < 0) {
-                disp.className = 'excedido';
-                if (totalSegundos >= -10) { 
-                    disp.classList.add('tremendo'); 
-                    tocarBip(); 
-                } else { 
-                    disp.classList.remove('tremendo'); 
-                    pararBip(); 
-                }
-            } else if (totalSegundos <= 30) {
-                disp.className = 'urgente'; 
-                pararBip();
-            } else {
-                disp.className = ''; 
-                pararBip();
-            }
-        }
-
-        function sincronizarFirebase() {
-            localStorage.setItem('cronometro_vFinal_v2', JSON.stringify({
-                totalSegundos, tempoOriginalSegundos, rodando, visivel, ts: Date.now()
-            }));
+        function subir() {
             set(ref(db, 'sessao'), { t: disp.innerText, c: disp.className, v: visivel });
         }
 
-        window.acaoPrincipal = () => {
-            unlockAudio();
-            if (rodando) {
-                clearInterval(ticker); rodando = false;
-                btnMain.innerText = "Iniciar"; btnMain.classList.remove('btn-pausar');
-                pararBip();
+        function formatarTempoVisual(segundos) {
+            const abs = Math.abs(segundos);
+            const m = Math.floor(abs/60), s = abs%60;
+            return `${segundos < 0 ? '-' : ''}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+        }
+
+        function definirNovoTempo(texto) {
+            forcarAudio();
+            let apenasNumeros = texto.replace(/\D/g, '');
+            if (!apenasNumeros) apenasNumeros = "0000";
+            let num = parseInt(apenasNumeros);
+            let m = Math.floor(num / 100);
+            let s = num % 100;
+            if (s > 59) s = 59;
+            
+            totalSegundos = (m * 60) + s;
+            tempoOriginalSegundos = totalSegundos;
+            
+            const tempoTexto = formatarTempoVisual(totalSegundos);
+            disp.innerText = tempoTexto;
+            inputTempo.value = tempoTexto;
+            disp.className = ''; 
+            sireneSom.pause();
+            subir();
+        }
+
+        // --- LÓGICA DO NOVO BOTÃO +1 MINUTO ---
+        window.adicionarMinuto = () => {
+            forcarAudio();
+            // Se o tempo for 0 ou menor, reseta para 1 minuto
+            if (totalSegundos <= 0) {
+                totalSegundos = 60;
             } else {
-                rodando = true; btnMain.innerText = "Pausar"; btnMain.classList.add('btn-pausar');
-                ticker = setInterval(() => { totalSegundos--; atualizarInterface(); sincronizarFirebase(); }, 1000);
+                totalSegundos += 60;
             }
-            sincronizarFirebase();
+            
+            const novoTexto = formatarTempoVisual(totalSegundos);
+            disp.innerText = novoTexto;
+            inputTempo.value = novoTexto;
+            
+            // Se não estiver rodando, o tempo original vira o novo tempo somado
+            if (!rodando) tempoOriginalSegundos = totalSegundos;
+            
+            subir();
+        };
+
+        window.acaoPrincipal = () => {
+            forcarAudio();
+            if (rodando) {
+                clearInterval(ticker);
+                rodando = false;
+                btnMain.innerText = "Iniciar";
+                btnMain.classList.remove('btn-pausar');
+                disp.contentEditable = "true";
+                disp.classList.remove('tremendo');
+                sireneSom.pause();
+            } else {
+                rodando = true;
+                btnMain.innerText = "Pausar";
+                btnMain.classList.add('btn-pausar');
+                disp.contentEditable = "false";
+
+                ticker = setInterval(() => {
+                    totalSegundos--;
+                    const tempoTexto = formatarTempoVisual(totalSegundos);
+                    disp.innerText = tempoTexto;
+                    inputTempo.value = tempoTexto;
+
+                    if (totalSegundos < 0) {
+                        disp.className = 'excedido';
+                        if (totalSegundos >= -10) {
+                            disp.classList.add('tremendo');
+                            sireneSom.currentTime = 0;
+                            sireneSom.volume = 1.0;
+                            sireneSom.play().catch(() => {});
+                        } else {
+                            disp.classList.remove('tremendo');
+                            sireneSom.pause();
+                        }
+                    } else if (totalSegundos <= 30) {
+                        disp.className = 'urgente';
+                    } else {
+                        disp.className = '';
+                    }
+                    subir();
+                }, 1000);
+            }
         };
 
         window.resetarTotal = () => {
-            unlockAudio();
-            clearInterval(ticker); rodando = false;
+            forcarAudio();
+            clearInterval(ticker);
+            rodando = false;
+            btnMain.innerText = "Iniciar";
+            btnMain.classList.remove('btn-pausar');
+            disp.contentEditable = "true";
             totalSegundos = tempoOriginalSegundos;
-            btnMain.innerText = "Iniciar"; btnMain.classList.remove('btn-pausar');
-            pararBip(); atualizarInterface(); sincronizarFirebase();
+            const tempoTexto = formatarTempoVisual(totalSegundos);
+            disp.innerText = tempoTexto;
+            inputTempo.value = tempoTexto;
+            disp.className = '';
+            sireneSom.pause();
+            subir();
         };
 
-        window.setPre = (val) => {
-            unlockAudio();
-            tempoOriginalSegundos = converterParaSegundos(val);
-            totalSegundos = tempoOriginalSegundos;
-            atualizarInterface(); sincronizarFirebase();
-        };
+        window.pararTudo = () => { resetarTotal(); toggleOBS(false); };
 
         window.toggleOBS = (v) => {
-            unlockAudio();
+            forcarAudio();
             visivel = v;
             const st = document.getElementById('status-obs');
-            if (v) {
-                st.innerText = "OBS: AO VIVO 🟢"; st.classList.add('status-on');
-                btnShow.classList.add('btn-verde-ativa'); btnHide.classList.remove('btn-vermelha-ativa');
-            } else {
-                st.innerText = "OBS: OCULTO 🔴"; st.classList.remove('status-on');
-                btnHide.classList.add('btn-vermelha-ativa'); btnShow.classList.remove('btn-verde-ativa');
-            }
-            sincronizarFirebase();
+            st.innerText = v ? "OBS: AO VIVO 🟢" : "OBS: OCULTO 🔴";
+            v ? st.classList.add('status-on') : st.classList.remove('status-on');
+            subir();
         };
 
-        window.pararTudo = () => { window.resetarTotal(); window.toggleOBS(false); };
-
-        disp.onblur = () => { 
-            totalSegundos = converterParaSegundos(disp.innerText); 
-            tempoOriginalSegundos = totalSegundos;
-            atualizarInterface(); sincronizarFirebase(); 
-        };
-        inputTempo.onblur = () => { 
-            totalSegundos = converterParaSegundos(inputTempo.value); 
-            tempoOriginalSegundos = totalSegundos;
-            atualizarInterface(); sincronizarFirebase(); 
-        };
-
-        disp.onkeydown = (e) => { if(e.key === 'Enter') { e.preventDefault(); disp.blur(); } };
-        inputTempo.onkeydown = (e) => { if(e.key === 'Enter') { e.preventDefault(); inputTempo.blur(); } };
-
-        setInterval(() => { document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); }, 1000);
-
-        const saved = localStorage.getItem('cronometro_vFinal_v2');
-        if (saved) {
-            const data = JSON.parse(saved);
-            totalSegundos = data.totalSegundos;
-            tempoOriginalSegundos = data.tempoOriginalSegundos;
-            visivel = data.visivel || false;
-            if (data.rodando) {
-                totalSegundos -= Math.floor((Date.now() - data.ts) / 1000);
-                window.acaoPrincipal();
-            }
-            window.toggleOBS(visivel);
-        } else {
-            window.toggleOBS(false);
-        }
+        inputTempo.onblur = () => definirNovoTempo(inputTempo.value);
+        disp.onblur = () => definirNovoTempo(disp.innerText);
+        disp.onkeydown = (e) => { if(e.key === "Enter") { e.preventDefault(); disp.blur(); } };
+        window.setPre = (v) => { definirNovoTempo(v); }
         
-        atualizarInterface();
+        setInterval(() => { 
+            document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); 
+        }, 1000);
+
+        definirNovoTempo("05:00");
     </script>
 </body>
 </html>
