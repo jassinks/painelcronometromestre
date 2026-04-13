@@ -120,7 +120,7 @@
             font-size: 11px; letter-spacing: 0.5px; background: var(--verde-primario); 
             color: white; border-bottom: 3px solid #044419;
             flex: 1;
-            min-width: 100px;
+            min-width: 90px;
         }
         
         button:active { transform: translateY(1px); border-bottom: none; }
@@ -149,8 +149,11 @@
     <div id="controles">
         <div class="linha-controles">
             <input type="text" id="in-t" value="05:00">
+            <button onclick="setPre('01:00')">1 Min</button>
             <button onclick="setPre('02:00')">2 Min</button>
+            <button onclick="setPre('03:00')">3 Min</button>
             <button onclick="setPre('05:00')">5 Min</button>
+            <button onclick="setPre('10:00')">10 Min</button>
             <button onclick="setPre('15:00')">15 Min</button>
             <button class="btn-add" onclick="adicionarMinuto()">+1 Min</button>
         </div>
@@ -228,23 +231,17 @@
             subir();
         }
 
-        // --- LÓGICA DO NOVO BOTÃO +1 MINUTO ---
         window.adicionarMinuto = () => {
             forcarAudio();
-            // Se o tempo for 0 ou menor, reseta para 1 minuto
             if (totalSegundos <= 0) {
                 totalSegundos = 60;
             } else {
                 totalSegundos += 60;
             }
-            
             const novoTexto = formatarTempoVisual(totalSegundos);
             disp.innerText = novoTexto;
             inputTempo.value = novoTexto;
-            
-            // Se não estiver rodando, o tempo original vira o novo tempo somado
             if (!rodando) tempoOriginalSegundos = totalSegundos;
-            
             subir();
         };
 
