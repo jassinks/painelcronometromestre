@@ -8,150 +8,83 @@
         :root { --bg-escuro: #050505; --verde-primario: #076f28; --verde-secundario: #05561f; --branco: #FFFFFF; --fonte-principal: 'General Sans', sans-serif; }
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
         body { font-family: var(--fonte-principal); margin: 0; background: var(--bg-escuro); color: var(--branco); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
-        
         #topo-relogio { background: var(--verde-primario); padding: 20px; font-size: clamp(60px, 15vw, 120px); font-weight: 800; border-radius: 30px 30px 0 0; text-align: center; width: 100%; max-width: 900px; line-height: 1; border-bottom: 4px solid rgba(0,0,0,0.2); }
         #corpo-cronometro { background: var(--verde-secundario); padding: 40px 20px; border-radius: 0 0 40px 40px; border: 8px solid var(--verde-primario); border-top: none; display: flex; justify-content: center; width: 100%; max-width: 900px; }
-        #tempo-display { font-size: clamp(80px, 25vw, 280px); font-weight: 800; color: var(--branco); line-height: 0.85; text-align: center; width: 100%; outline: none; }
-        
-        .urgente { color: #ffeb3b !important; } 
-        .excedido { color: #ff4d4d !important; }
-        .tremendo { animation: shake 0.1s infinite; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(4px); } 75% { transform: translateX(-4px); } }
-
+        #tempo-display { font-size: clamp(80px, 25vw, 280px); font-weight: 800; color: var(--branco); line-height: 0.85; text-align: center; width: 100%; }
         #controles { margin-top: 25px; background: #121212; padding: 20px; border-radius: 20px; display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 900px; border: 1px solid #222; }
         .linha-controles { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
-        
-        input { background: #000; border: 2px solid #333; color: #55E21F; padding: 12px; width: 140px; text-align: center; font-size: 22px; font-weight: 700; border-radius: 12px; font-family: var(--fonte-principal); }
-        button { padding: 14px 18px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 11px; letter-spacing: 0.5px; background: var(--verde-primario); color: white; border-bottom: 3px solid #044419; flex: 1; min-width: 90px; }
-        button:active { transform: translateY(1px); border-bottom: none; }
+        button { padding: 14px 18px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 11px; background: var(--verde-primario); color: white; border-bottom: 3px solid #044419; flex: 1; min-width: 90px; }
         .btn-add { background: #27ae60 !important; border-bottom-color: #1e8449 !important; }
-        .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-danger { background: #8b0000 !important; border-bottom-color: #4b0000 !important; }
         .btn-obs { background: #333; border-bottom-color: #111; }
     </style>
 </head>
 <body>
     <div id="topo-relogio">00:00:00</div>
-    <div id="corpo-cronometro">
-        <div id="tempo-display" contenteditable="true" spellcheck="false">05:00</div>
-    </div>
-    
+    <div id="corpo-cronometro"><div id="tempo-display">05:00</div></div>
     <div id="controles">
         <div class="linha-controles">
-            <input type="text" id="in-t" value="05:00">
             <button onclick="setPre(60)">1 Min</button>
-            <button onclick="setPre(120)">2 Min</button>
-            <button onclick="setPre(180)">3 Min</button>
             <button onclick="setPre(300)">5 Min</button>
             <button onclick="setPre(600)">10 Min</button>
-            <button onclick="setPre(900)">15 Min</button>
             <button class="btn-add" onclick="addMin()">+1 Min</button>
         </div>
         <div class="linha-controles">
-            <button id="btn-main" onclick="toggle()">Iniciar</button>
-            <button class="btn-danger" onclick="resetar()">Resetar</button>
+            <button id="btn-main" onclick="toggle()" style="background:#e67e22; min-width:150px">Iniciar</button>
+            <button onclick="resetar()">Resetar</button>
             <button class="btn-obs" onclick="enviarVis(true)">Mostrar OBS</button>
             <button class="btn-obs" onclick="enviarVis(false)">Ocultar</button>
         </div>
     </div>
 
+    <audio id="alarmeSom" src="https://www.soundjay.com/buttons/beep-07.mp3" preload="auto"></audio>
+
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
-        
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         const firebaseConfig = { apiKey: "AIzaSyANkLt3rRd16ueIAKbfFhCXfcutMEky_c8", authDomain: "cronometro-82294.firebaseapp.com", projectId: "cronometro-82294", databaseURL: "https://cronometro-82294-default-rtdb.firebaseio.com", appId: "1:716345460408:web:27a5699b42d17f4b58d64d" };
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const refSessao = ref(db, 'sessao');
+        const som = document.getElementById('alarmeSom');
 
-        const disp = document.getElementById('tempo-display');
-        const inT = document.getElementById('in-t');
-        const btnMain = document.getElementById('btn-main');
-
-        let seg = 300, rodando = false, vis = false, ticker, tempoOriginal = 300;
+        let seg = 300, rodando = false, vis = false, ticker;
 
         function publicar() {
-            // A "Mágica" contra travamento: calculamos o milissegundo exato do fim
-            const tempoFinalAbsoluto = Date.now() + (seg * 1000);
-            set(refSessao, {
-                f: tempoFinalAbsoluto,
-                r: seg,
-                run: rodando,
-                v: vis,
+            set(ref(db, 'sessao'), {
+                fim: Date.now() + (seg * 1000),
+                restante: seg,
+                rodando: rodando,
+                visivel: vis,
                 ts: Date.now()
             });
         }
 
-        function formatar(s) {
-            const abs = Math.abs(s);
-            const min = Math.floor(abs/60).toString().padStart(2,'0');
-            const sec = (abs%60).toString().padStart(2,'0');
-            return `${s < 0 ? '-' : ''}${min}:${sec}`;
-        }
-
-        function atualizarUI() {
-            const texto = formatar(seg);
-            disp.innerText = texto;
-            inT.value = texto;
-            btnMain.innerText = rodando ? "Pausar" : "Iniciar";
-            btnMain.className = rodando ? "btn-pausar" : "";
-            
-            // Cores e Tremedeira
-            disp.className = seg < 0 ? 'excedido' : (seg <= 30 ? 'urgente' : '');
-            if (seg < 0 && seg >= -10 && rodando) disp.classList.add('tremendo');
-            else disp.classList.remove('tremendo');
-        }
-
-        window.setPre = (s) => { 
-            clearInterval(ticker); rodando = false; 
-            seg = s; tempoOriginal = s; 
-            atualizarUI(); publicar(); 
-        };
-
-        window.addMin = () => { 
-            seg += 60; 
-            atualizarUI(); 
-            if (rodando) publicar(); 
-        };
-
-        window.enviarVis = (v) => { vis = v; publicar(); };
-
-        window.resetar = () => { 
-            clearInterval(ticker); rodando = false; 
-            seg = tempoOriginal; 
-            atualizarUI(); publicar(); 
-        };
-
         window.toggle = () => {
             rodando = !rodando;
+            // Destrava o áudio no primeiro clique
+            som.play().then(() => { som.pause(); som.currentTime = 0; });
+            
             if (rodando) {
-                ticker = setInterval(() => {
-                    seg--;
-                    atualizarUI();
-                    // Sincroniza com o Firebase a cada 2 segundos para garantir que o OBS não perca o fio
-                    if (seg % 2 === 0) publicar();
+                ticker = setInterval(() => { 
+                    seg--; 
+                    if (seg === 0) som.play(); // TOCA NO ZERO
+                    atualizarUI(); 
                 }, 1000);
-            } else {
-                clearInterval(ticker);
-            }
-            atualizarUI();
-            publicar();
+            } else { clearInterval(ticker); }
+            publicar(); atualizarUI();
         };
 
-        // Escuta o topo relógio
-        setInterval(() => { 
-            document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); 
-        }, 1000);
+        window.setPre = (s) => { seg = s; rodando = false; clearInterval(ticker); atualizarUI(); publicar(); };
+        window.addMin = () => { seg += 60; atualizarUI(); if(rodando) publicar(); };
+        window.enviarVis = (v) => { vis = v; publicar(); };
+        window.resetar = () => { seg = 300; rodando = false; clearInterval(ticker); atualizarUI(); publicar(); };
 
-        // Permite editar o tempo direto no display
-        disp.onblur = () => {
-            const partes = disp.innerText.split(':');
-            if(partes.length === 2) {
-                seg = (parseInt(partes[0]) * 60) + parseInt(partes[1]);
-                tempoOriginal = seg;
-                publicar();
-            }
-        };
+        function atualizarUI() {
+            const m = Math.floor(Math.abs(seg)/60), s = Math.abs(seg)%60;
+            document.getElementById('tempo-display').innerText = `${seg<0?'-':''}${m.toString().padStart(2,'0')}:${s.toString().padStart(2,'0')}`;
+            document.getElementById('btn-main').innerText = rodando ? "Pausar" : "Iniciar";
+        }
+        setInterval(() => { document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); }, 1000);
     </script>
 </body>
 </html>
