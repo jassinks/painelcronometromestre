@@ -18,6 +18,7 @@
         
         #tempo-display { font-size: clamp(60px, 22vw, 280px); font-weight: 800; color: var(--branco); line-height: 1; text-align: center; width: 100%; outline: none; cursor: text; white-space: nowrap; display: inline-block; }
 
+        /* ANIMAÇÃO APENAS NO NÚMERO */
         .alerta-total #tempo-display { color: #ff3333 !important; animation: shake-number 0.12s infinite; }
         @keyframes shake-number {
             0% { transform: translate(2px, 1px); }
@@ -39,7 +40,7 @@
         .btn-reset { background: #c0392b !important; border-bottom-color: #7b241c !important; }
     </style>
 </head>
-<body id="main-body" onclick="desbloquearAudio()">
+<body id="main-body" onmousedown="forceUnlockAudio()">
 
     <div id="topo-relogio">
         <span id="status-obs">● Ao Vivo no OBS</span>
@@ -52,22 +53,21 @@
 
     <div id="controles">
         <div class="linha-controles">
-            <button onclick="setPre(60)">1 Min</button>
-            <button onclick="setPre(120)">2 Min</button>
-            <button onclick="setPre(180)">3 Min</button>
-            <button onclick="setPre(300)">5 Min</button>
-            <button onclick="setPre(600)">10 Min</button>
-            <button onclick="setPre(900)">15 Min</button>
-            <button class="btn-add" onclick="addMin()">+1 Min</button>
+            <button onmousedown="setPre(60)">1 Min</button>
+            <button onmousedown="setPre(120)">2 Min</button>
+            <button onmousedown="setPre(180)">3 Min</button>
+            <button onmousedown="setPre(300)">5 Min</button>
+            <button onmousedown="setPre(600)">10 Min</button>
+            <button onmousedown="setPre(900)">15 Min</button>
+            <button class="btn-add" onmousedown="addMin()">+1 Min</button>
         </div>
         <div class="linha-controles">
-            <button id="btn-main" onclick="toggle()" style="min-width:140px">Iniciar</button>
-            <button class="btn-reset" onclick="resetar()">Resetar</button>
-            <button id="btn-obs-toggle" class="btn-obs" onclick="enviarVis(true)">Mostrar no OBS</button>
+            <button id="btn-main" onmousedown="toggle()" style="min-width:140px">Iniciar</button>
+            <button class="btn-reset" onmousedown="resetar()">Resetar</button>
+            <button id="btn-obs-toggle" class="btn-obs" onmousedown="enviarVis(true)">Mostrar no OBS</button>
         </div>
     </div>
 
-    <!-- O segredo está em usar um som que reseta sempre que disparado -->
     <audio id="alarmeSom" src="https://actions.google.com/sounds/v1/alarms/industrial_alarm_loop.ogg" preload="auto" loop></audio>
 
     <script type="module">
@@ -89,9 +89,42 @@
         const body = document.getElementById('main-body');
 
         let seg = 300, rodando = false, vis = false, ticker = null, tempoOriginal = 300;
-        let audioAtivado = false;
+        let audioCtx = null;
+        let audioUnlocked = false;
 
-        // --- PERSISTÊNCIA ---
+        // FUNÇÃO DE DESBLOQUEIO AGRESSIVA
+        window.forceUnlockAudio = () => {
+            if (audioUnlocked) return;
+            
+            // Tenta desbloquear o elemento <audio>
+            som.play().then(() => {
+                som.pause();
+                som.currentTime = 0;
+                audioUnlocked = true;
+                console.log("Sistema de áudio liberado.");
+            }).catch(e => console.log("Aguardando gesto..."));
+
+            // Tenta inicializar o Contexto de Áudio da Web (Backup para OBS)
+            if (!audioCtx) {
+                audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+        };
+
+        function gerenciarSom(ligar) {
+            if (ligar && rodando && (seg <= -1 && seg >= -10)) {
+                if (som.paused) som.play().catch(() => {});
+                body.classList.add('alerta-total');
+            } else {
+                som.pause();
+                som.currentTime = 0;
+                body.classList.remove('alerta-total');
+            }
+        }
+
+        // PERSISTÊNCIA
         window.onload = () => {
             const salvo = localStorage.getItem('tempoCronometro');
             const originalSalvo = localStorage.getItem('tempoOriginal');
@@ -102,20 +135,6 @@
             }
         };
 
-        // FUNÇÃO CRÍTICA PARA NAVEGADORES
-        window.desbloquearAudio = () => {
-            if (!audioAtivado) {
-                som.play().then(() => {
-                    som.pause();
-                    som.currentTime = 0;
-                    audioAtivado = true;
-                }).catch(err => console.log("Aguardando interação..."));
-            }
-        }
-
-        function deveTocar() { return (seg <= -1 && seg >= -10 && rodando); }
-
-        display.addEventListener('focus', () => { if(rodando) toggle(); });
         display.addEventListener('blur', () => {
             let valor = display.innerText.trim();
             if (valor.includes(':')) {
@@ -133,79 +152,62 @@
         }
 
         window.toggle = () => {
-            desbloquearAudio();
+            forceUnlockAudio();
             rodando = !rodando;
             if (rodando) {
                 ticker = setInterval(() => {
                     seg--;
                     localStorage.setItem('tempoCronometro', seg);
-                    gerenciarAlarme();
+                    gerenciarSom(true);
                     atualizarUI();
                     if (seg % 2 === 0) publicar();
                 }, 1000);
             } else {
                 clearInterval(ticker);
-                som.pause();
-                body.classList.remove('alerta-total');
+                gerenciarSom(false);
             }
             publicar(); atualizarUI();
         };
 
-        function gerenciarAlarme() {
-            if (deveTocar()) {
-                if (som.paused) {
-                    som.currentTime = 0;
-                    som.play().catch(e => console.log("Erro ao tocar:", e));
-                }
-                body.classList.add('alerta-total');
-            } else {
-                if (!som.paused) {
-                    som.pause();
-                    som.currentTime = 0;
-                }
-                body.classList.remove('alerta-total');
-            }
-        }
-
         window.setPre = (s) => {
-            desbloquearAudio();
+            forceUnlockAudio();
             seg = s; tempoOriginal = s; rodando = false;
-            clearInterval(ticker); gerenciarAlarme(); 
+            clearInterval(ticker); gerenciarSom(false);
             localStorage.setItem('tempoCronometro', seg);
             localStorage.setItem('tempoOriginal', tempoOriginal);
             atualizarUI(); publicar();
         };
 
-        window.addMin = () => { 
-            desbloquearAudio();
-            seg += 60; 
-            atualizarUI(); 
-            if(rodando) publicar(); 
-            localStorage.setItem('tempoCronometro', seg); 
+        window.addMin = () => {
+            forceUnlockAudio();
+            seg += 60;
+            atualizarUI();
+            if(rodando) publicar();
         };
-        
-        window.enviarVis = (v) => { 
-            vis = v; 
+
+        window.enviarVis = (v) => {
+            vis = v;
             publicar();
             const btn = document.getElementById('btn-obs-toggle');
             const status = document.getElementById('status-obs');
             if(v) {
                 btn.innerText = "Ocultar no OBS";
                 btn.className = "btn-reset";
-                btn.onclick = () => enviarVis(false);
+                btn.onmousedown = () => enviarVis(false);
                 status.style.display = "block";
             } else {
                 btn.innerText = "Mostrar no OBS";
                 btn.className = "btn-obs";
-                btn.onclick = () => enviarVis(true);
+                btn.onmousedown = () => enviarVis(true);
                 status.style.display = "none";
             }
         };
 
         window.resetar = () => {
-            desbloquearAudio();
-            seg = tempoOriginal; rodando = false; clearInterval(ticker); 
-            gerenciarAlarme(); atualizarUI(); publicar();
+            forceUnlockAudio();
+            seg = tempoOriginal; rodando = false;
+            clearInterval(ticker); gerenciarSom(false);
+            atualizarUI(); publicar();
             localStorage.setItem('tempoCronometro', seg);
         };
 
