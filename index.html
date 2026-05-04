@@ -5,64 +5,150 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <link href="https://api.fontshare.com/v2/css?f[]=general-sans@500,600,700,800&display=swap" rel="stylesheet">
     <style>
-        :root { --bg-escuro: #050505; --verde-primario: #076f28; --verde-secundario: #05561f; --branco: #FFFFFF; --fonte-principal: 'General Sans', sans-serif; }
+        :root { 
+            --bg-escuro: #050505; 
+            --verde-primario: #076f28; 
+            --verde-secundario: #05561f; 
+            --branco: #FFFFFF; 
+            --fonte-principal: 'General Sans', sans-serif; 
+        }
+        
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { font-family: var(--fonte-principal); margin: 0; background: var(--bg-escuro); color: var(--branco); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
         
-        #topo-relogio { background: var(--verde-primario); padding: 20px; font-size: clamp(60px, 15vw, 120px); font-weight: 800; border-radius: 30px 30px 0 0; text-align: center; width: 100%; max-width: 900px; line-height: 1; border-bottom: 4px solid rgba(0,0,0,0.2); transition: background 0.3s; }
+        body { 
+            font-family: var(--fonte-principal); 
+            margin: 0; 
+            background: var(--bg-escuro); 
+            color: var(--branco); 
+            display: flex; 
+            flex-direction: column; 
+            align-items: center; 
+            justify-content: center; 
+            min-height: 100vh; 
+            padding: 20px;
+            overflow-x: hidden;
+        }
         
-        #corpo-cronometro { background: var(--verde-secundario); padding: 40px 20px; border-radius: 0 0 40px 40px; border: 8px solid var(--verde-primario); border-top: none; display: flex; justify-content: center; width: 100%; max-width: 900px; transition: all 0.3s; }
+        #topo-relogio { 
+            background: var(--verde-primario); 
+            padding: 20px; 
+            font-size: clamp(40px, 10vw, 120px); 
+            font-weight: 800; 
+            border-radius: 30px 30px 0 0; 
+            text-align: center; 
+            width: 100%; 
+            max-width: 900px; 
+            line-height: 1; 
+            border-bottom: 4px solid rgba(0,0,0,0.2); 
+        }
         
-        #tempo-display { font-size: clamp(80px, 25vw, 280px); font-weight: 800; color: var(--branco); line-height: 0.85; text-align: center; width: 100%; outline: none; cursor: text; }
-        #tempo-display:focus { border-bottom: 4px dashed rgba(255,255,255,0.5); }
-
-        /* ESTADO DE ALERTA (NEGATIVO) */
-        .alerta-total #corpo-cronometro { background: #8b0000 !important; border-color: #ff0000 !important; animation: shake 0.1s infinite; }
-        .alerta-total #topo-relogio { background: #ff0000 !important; }
-
-        @keyframes shake {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            20% { transform: translate(-3px, 0px) rotate(-1deg); }
-            40% { transform: translate(3px, 2px) rotate(1deg); }
-            60% { transform: translate(1px, -1px) rotate(1deg); }
-            80% { transform: translate(-1px, 2px) rotate(-1deg); }
-            100% { transform: translate(1px, -2px) rotate(0deg); }
+        #corpo-cronometro { 
+            background: var(--verde-secundario); 
+            padding: 40px 20px; 
+            border-radius: 0 0 40px 40px; 
+            border: 8px solid var(--verde-primario); 
+            border-top: none; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center;
+            width: 100%; 
+            max-width: 900px; 
+            min-height: 300px;
+        }
+        
+        #tempo-display { 
+            font-size: clamp(60px, 22vw, 280px); 
+            font-weight: 800; 
+            color: var(--branco); 
+            line-height: 1; 
+            text-align: center; 
+            width: 100%; 
+            outline: none; 
+            cursor: text;
+            /* Trava de linha única inquebrável */
+            white-space: nowrap; 
+            display: inline-block;
+            transition: color 0.2s;
         }
 
-        #controles { margin-top: 25px; background: #121212; padding: 20px; border-radius: 20px; display: flex; flex-direction: column; gap: 15px; width: 100%; max-width: 900px; border: 1px solid #222; }
-        .linha-controles { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; width: 100%; }
+        /* ANIMAÇÃO DE SHAKE APENAS NO NÚMERO */
+        .alerta-total #tempo-display { 
+            color: #ff3333 !important; 
+            animation: shake-number 0.12s infinite; 
+        }
+
+        @keyframes shake-number {
+            0% { transform: translate(2px, 1px); }
+            25% { transform: translate(-2px, -1px); }
+            50% { transform: translate(1px, 2px); }
+            75% { transform: translate(-1px, -2px); }
+            100% { transform: translate(0px, 0px); }
+        }
+
+        #controles { 
+            margin-top: 25px; 
+            background: #121212; 
+            padding: 20px; 
+            border-radius: 20px; 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px; 
+            width: 100%; 
+            max-width: 900px; 
+            border: 1px solid #222; 
+        }
         
-        button { padding: 14px 18px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 11px; background: var(--verde-primario); color: white; border-bottom: 3px solid #044419; flex: 1; min-width: 90px; }
-        button:active { transform: translateY(1px); border-bottom: none; }
+        .linha-controles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: 100%; }
         
+        button { 
+            padding: 12px 15px; 
+            border: none; 
+            border-radius: 10px; 
+            font-weight: 700; 
+            cursor: pointer; 
+            text-transform: uppercase; 
+            font-size: 11px; 
+            background: var(--verde-primario); 
+            color: white; 
+            border-bottom: 4px solid #044419; 
+            flex: 1; 
+            min-width: 85px; 
+            transition: all 0.1s;
+        }
+        
+        button:active { transform: translateY(2px); border-bottom-width: 1px; }
         .btn-add { background: #27ae60 !important; border-bottom-color: #1e8449 !important; }
         .btn-obs { background: #333; border-bottom-color: #111; }
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
+        .btn-reset { background: #c0392b !important; border-bottom-color: #7b241c !important; }
+
     </style>
 </head>
 <body id="main-body">
 
     <div id="topo-relogio">00:00:00</div>
     <div id="corpo-cronometro">
-        <!-- Clique aqui para editar o tempo manualmente -->
         <div id="tempo-display" contenteditable="true" spellcheck="false">05:00</div>
     </div>
 
     <div id="controles">
         <div class="linha-controles">
             <button onclick="setPre(60)">1 Min</button>
+            <button onclick="setPre(120)">2 Min</button>
             <button onclick="setPre(300)">5 Min</button>
             <button onclick="setPre(600)">10 Min</button>
+            <button onclick="setPre(900)">15 Min</button>
             <button class="btn-add" onclick="addMin()">+1 Min</button>
         </div>
         <div class="linha-controles">
-            <button id="btn-main" onclick="toggle()" style="min-width:150px">Iniciar</button>
-            <button onclick="resetar()">Resetar</button>
+            <button id="btn-main" onclick="toggle()" style="min-width:140px">Iniciar</button>
+            <button class="btn-reset" onclick="resetar()">Resetar</button>
             <button class="btn-obs" onclick="enviarVis(true)">Mostrar OBS</button>
             <button class="btn-obs" onclick="enviarVis(false)">Ocultar</button>
         </div>
     </div>
 
+    <!-- Áudio de alarme infalível -->
     <audio id="alarmeSom" src="https://actions.google.com/sounds/v1/alarms/industrial_alarm_loop.ogg" preload="auto" loop></audio>
 
     <script type="module">
@@ -83,62 +169,81 @@
         const display = document.getElementById('tempo-display');
         const body = document.getElementById('main-body');
 
-        let seg = 300, rodando = false, vis = false, ticker, tempoOriginal = 300;
+        let seg = 300, rodando = false, vis = false, ticker = null, tempoOriginal = 300;
 
-        // CARREGA MESA DIRETORA SALVA
+        // Recuperar dados ao carregar
         window.onload = () => {
-            const mesaSalva = JSON.parse(localStorage.getItem('mesaDiretora'));
-            // Adicione aqui lógica de inputs de mesa se desejar manter do código anterior
+            const lastTime = localStorage.getItem('lastTime');
+            if(lastTime) {
+                seg = parseInt(lastTime);
+                tempoOriginal = seg;
+                atualizarUI();
+            }
         };
 
-        // LÓGICA DE EDIÇÃO MANUAL NO PAINEL
-        display.addEventListener('focus', () => { if(rodando) toggle(); }); // Pausa ao editar
+        // Edição manual robusta
+        display.addEventListener('focus', () => { if(rodando) toggle(); });
         display.addEventListener('blur', processarEntradaManual);
-        display.addEventListener('keydown', (e) => { if(e.key === 'Enter') { e.preventDefault(); display.blur(); } });
+        display.addEventListener('keydown', (e) => { 
+            if(e.key === 'Enter') { e.preventDefault(); display.blur(); } 
+        });
 
         function processarEntradaManual() {
-            let valor = display.innerText.replace(/[^0-9:]/g, '');
+            let valor = display.innerText.trim();
             let totalSegundos = 0;
-
+            
             if (valor.includes(':')) {
                 let partes = valor.split(':');
-                let m = parseInt(partes[0]) || 0;
-                let s = parseInt(partes[1]) || 0;
-                totalSegundos = (m * 60) + s;
+                let m = parseInt(partes[0].replace(/[^0-9-]/g, '')) || 0;
+                let s = parseInt(partes[1].replace(/[^0-9]/g, '')) || 0;
+                totalSegundos = (m * 60) + (m < 0 ? -s : s);
             } else {
-                let n = parseInt(valor) || 0;
-                // Inteligência: se digitar 100 entende como 1:40, se digitar 10 entende como 10s
-                totalSegundos = n; 
+                totalSegundos = parseInt(valor.replace(/[^0-9-]/g, '')) || 0;
             }
-
+            
             seg = totalSegundos;
             tempoOriginal = totalSegundos;
+            localStorage.setItem('lastTime', seg);
             atualizarUI();
             publicar();
         }
 
         function publicar() {
-            set(ref(db, 'sessao'), { f: Date.now() + (seg * 1000), r: seg, run: rodando, v: vis, ts: Date.now() });
+            set(ref(db, 'sessao'), { 
+                f: Date.now() + (seg * 1000), 
+                r: seg, 
+                run: rodando, 
+                v: vis, 
+                ts: Date.now() 
+            });
         }
 
         window.toggle = () => {
             rodando = !rodando;
-            som.play().then(() => { if (seg > 0 || seg < -10) { som.pause(); som.currentTime = 0; } }).catch(() => {});
+            // Destravamento de áudio obrigatório
+            som.play().then(() => { 
+                if (seg > 0 || seg < -10) { som.pause(); som.currentTime = 0; } 
+            }).catch(() => {});
             
             if (rodando) {
-                ticker = setInterval(() => { 
-                    seg--; 
-                    gerenciarAlarme();
-                    atualizarUI();
-                    if (seg % 2 === 0) publicar(); 
-                }, 1000);
+                if(ticker) clearInterval(ticker);
+                ticker = setInterval(tick, 1000);
             } else { 
                 clearInterval(ticker);
                 som.pause();
+                body.classList.remove('alerta-total');
             }
             publicar(); 
             atualizarUI();
         };
+
+        function tick() {
+            seg--;
+            gerenciarAlarme();
+            atualizarUI();
+            if (seg % 2 === 0) publicar();
+            localStorage.setItem('lastTime', seg);
+        }
 
         function gerenciarAlarme() {
             if (seg <= 0 && seg >= -10 && rodando) {
@@ -147,20 +252,37 @@
             } else {
                 som.pause();
                 body.classList.remove('alerta-total');
+                if(seg < -10) som.currentTime = 0;
             }
         }
 
         window.setPre = (s) => { 
             seg = s; tempoOriginal = s; rodando = false; 
-            clearInterval(ticker); gerenciarAlarme(); atualizarUI(); publicar(); 
+            clearInterval(ticker); gerenciarAlarme(); 
+            atualizarUI(); publicar(); 
+            localStorage.setItem('lastTime', seg);
         };
 
-        window.addMin = () => { seg += 60; atualizarUI(); if(rodando) publicar(); };
+        window.addMin = () => { 
+            seg += 60; 
+            atualizarUI(); 
+            if(rodando) publicar(); 
+            localStorage.setItem('lastTime', seg);
+        };
+
         window.enviarVis = (v) => { vis = v; publicar(); };
-        window.resetar = () => { seg = tempoOriginal; rodando = false; clearInterval(ticker); gerenciarAlarme(); atualizarUI(); publicar(); };
+        
+        window.resetar = () => { 
+            seg = tempoOriginal; 
+            rodando = false; 
+            clearInterval(ticker); 
+            gerenciarAlarme(); 
+            atualizarUI(); 
+            publicar(); 
+        };
 
         function atualizarUI() {
-            if (document.activeElement === display) return; // Não sobrescreve enquanto digita
+            if (document.activeElement === display) return;
             const abs = Math.abs(seg);
             const m = Math.floor(abs/60).toString().padStart(2,'0');
             const s = (abs%60).toString().padStart(2,'0');
@@ -171,9 +293,12 @@
             b.className = rodando ? "btn-pausar" : "";
         }
 
-        setInterval(() => { 
-            document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT'); 
-        }, 1000);
+        // Relógio de topo com precisão de segundo
+        function clock() {
+            document.getElementById('topo-relogio').innerText = new Date().toLocaleTimeString('pt-PT');
+        }
+        setInterval(clock, 1000);
+        clock();
     </script>
 </body>
 </html>
