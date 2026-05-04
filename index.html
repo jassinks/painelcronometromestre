@@ -7,22 +7,23 @@
     <style>
         :root { --bg-escuro: #050505; --verde-primario: #076f28; --verde-secundario: #05561f; --branco: #FFFFFF; --fonte-principal: 'General Sans', sans-serif; }
         * { box-sizing: border-box; -webkit-font-smoothing: antialiased; }
-        body { font-family: var(--fonte-principal); margin: 0; background: var(--bg-escuro); color: var(--branco); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; overflow: hidden; }
+        body { font-family: var(--fonte-principal); margin: 0; background: var(--bg-escuro); color: var(--branco); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; overflow: hidden; touch-action: manipulation; }
         
         #topo-relogio { background: var(--verde-primario); padding: 20px; font-size: clamp(40px, 10vw, 120px); font-weight: 800; border-radius: 30px 30px 0 0; text-align: center; width: 100%; max-width: 900px; line-height: 1; border-bottom: 4px solid rgba(0,0,0,0.2); position: relative; }
-        #status-obs { position: absolute; top: 5px; right: 20px; font-size: 12px; color: #ffeb3b; display: none; text-transform: uppercase; letter-spacing: 1px; animation: blink 1s infinite; }
+        #status-obs { position: absolute; top: 5px; right: 20px; font-size: 14px; color: #ffeb3b; display: none; text-transform: uppercase; font-weight: 800; animation: blink 1s infinite; }
         @keyframes blink { 50% { opacity: 0; } }
 
-        #corpo-cronometro { background: var(--verde-secundario); padding: 40px 20px; border-radius: 0 0 40px 40px; border: 8px solid var(--verde-primario); border-top: none; display: flex; justify-content: center; align-items: center; width: 100%; max-width: 900px; min-height: 300px; }
-        #tempo-display { font-size: clamp(60px, 22vw, 280px); font-weight: 800; color: var(--branco); line-height: 1; text-align: center; width: 100%; outline: none; cursor: text; white-space: nowrap; display: inline-block; }
+        #corpo-cronometro { background: var(--verde-secundario); padding: 40px 20px; border-radius: 0 0 40px 40px; border: 8px solid var(--verde-primario); border-top: none; display: flex; justify-content: center; align-items: center; width: 100%; max-width: 900px; min-height: 300px; overflow: hidden; }
+        #tempo-display { font-size: clamp(60px, 22vw, 280px); font-weight: 800; color: var(--branco); line-height: 1; text-align: center; width: 100%; outline: none; cursor: text; white-space: nowrap; display: inline-block; transition: color 0.2s ease; }
 
-        /* Animação apenas no número */
+        /* Alerta restrito ao intervalo -00:00 a -00:10 */
         .alerta-total #tempo-display { color: #ff3333 !important; animation: shake-number 0.12s infinite; }
+        
         @keyframes shake-number {
-            0% { transform: translate(2px, 1px); }
-            25% { transform: translate(-2px, -1px); }
-            50% { transform: translate(1px, 2px); }
-            75% { transform: translate(-1px, -2px); }
+            0% { transform: translate(1px, 1px); }
+            25% { transform: translate(-1px, -1px); }
+            50% { transform: translate(1px, -1px); }
+            75% { transform: translate(-1px, 1px); }
             100% { transform: translate(0px, 0px); }
         }
 
@@ -30,16 +31,16 @@
         .linha-controles { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; width: 100%; }
         button { padding: 12px 15px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; text-transform: uppercase; font-size: 11px; background: var(--verde-primario); color: white; border-bottom: 4px solid #044419; flex: 1; min-width: 85px; }
         button:active { transform: translateY(2px); border-bottom-width: 1px; }
+
         .btn-add { background: #27ae60 !important; border-bottom-color: #1e8449 !important; }
-        .btn-obs { background: #333; border-bottom-color: #111; }
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-reset { background: #c0392b !important; border-bottom-color: #7b241c !important; }
     </style>
 </head>
-<body>
+<body onclick="forcarDestravamentoAudio()">
 
     <div id="topo-relogio">
-        <span id="status-obs">● Ao Vivo no OBS</span>
+        <span id="status-obs">● AO VIVO NO OBS</span>
         <div id="relogio-real">00:00:00</div>
     </div>
 
@@ -58,14 +59,11 @@
             <button class="btn-add" onclick="addMin()">+1 Min</button>
         </div>
         <div class="linha-controles">
-            <button id="btn-main" onclick="toggle()" style="min-width:140px">Iniciar</button>
+            <button id="btn-main" onclick="toggle()">Iniciar</button>
             <button class="btn-reset" onclick="resetar()">Resetar</button>
-            <button id="btn-obs-toggle" class="btn-obs" onclick="enviarVis(true)">Mostrar no OBS</button>
+            <button id="btn-obs-toggle" style="background:#333;" onclick="enviarVis(true)">Mostrar no OBS</button>
         </div>
     </div>
-
-    <!-- Som de alarme industrial -->
-    <audio id="alarmeSom" src="https://actions.google.com/sounds/v1/alarms/industrial_alarm_loop.ogg" preload="auto" loop></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
@@ -81,53 +79,73 @@
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
-        const som = document.getElementById('alarmeSom');
         const display = document.getElementById('tempo-display');
-        const mainBody = document.body;
 
         let seg = 300, rodando = false, vis = false, ticker = null, tempoOriginal = 300;
+        let audioCtx = null, oscillator = null;
 
-        // Recuperar tempo deixado por último
+        window.forcarDestravamentoAudio = () => {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        };
+
+        function tocarAlarmePiPiPi() {
+            if (!audioCtx || oscillator) return;
+            const gainNode = audioCtx.createGain();
+            const osc = audioCtx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(2500, audioCtx.currentTime);
+            const tempo = audioCtx.currentTime;
+            gainNode.gain.setValueAtTime(0, tempo);
+            gainNode.gain.linearRampToValueAtTime(0.8, tempo + 0.05);
+            gainNode.gain.linearRampToValueAtTime(0, tempo + 0.15);
+            gainNode.gain.linearRampToValueAtTime(0.8, tempo + 0.25);
+            gainNode.gain.linearRampToValueAtTime(0, tempo + 0.35);
+            gainNode.gain.linearRampToValueAtTime(0.8, tempo + 0.45);
+            gainNode.gain.linearRampToValueAtTime(0, tempo + 0.55);
+            osc.connect(gainNode);
+            gainNode.connect(audioCtx.destination);
+            osc.start(); osc.stop(tempo + 0.6);
+            oscillator = osc; osc.onended = () => oscillator = null;
+        }
+
         window.onload = () => {
-            const salvo = localStorage.getItem('tempoPersistente');
-            const original = localStorage.getItem('originalPersistente');
-            if (salvo !== null) {
-                seg = parseInt(salvo);
-                tempoOriginal = parseInt(original || 300);
+            const s = localStorage.getItem('seg'), r = localStorage.getItem('rodando') === 'true', o = localStorage.getItem('orig');
+            if (s !== null) {
+                seg = parseInt(s); tempoOriginal = parseInt(o || s);
                 atualizarUI();
+                if (r) { rodando = false; toggle(); }
             }
         };
 
-        function gerenciarSom() {
-            if (rodando && seg <= -1 && seg >= -10) {
-                som.volume = 1.0; // 100% de altura
-                if (som.paused) som.play().catch(() => {});
-                mainBody.classList.add('alerta-total');
+        function tick() {
+            seg--;
+            salvar();
+            if (seg <= 0 && seg >= -10) {
+                if (seg < 0) tocarAlarmePiPiPi();
+                document.body.classList.add('alerta-total');
             } else {
-                som.volume = 0.0; // Mudo mas continua "tocando" para o navegador
-                mainBody.classList.remove('alerta-total');
-                if (seg < -10 || !rodando) {
-                    som.pause();
-                    som.currentTime = 0;
-                }
+                document.body.classList.remove('alerta-total');
             }
+            atualizarUI();
+            if (seg % 2 === 0) publicar();
         }
 
         display.addEventListener('blur', () => {
-            let valor = display.innerText.trim();
-            if (valor.includes(':')) {
-                let p = valor.split(':');
+            let v = display.innerText.trim();
+            if (v.includes(':')) {
+                let p = v.split(':');
                 seg = (parseInt(p[0]) * 60) + (parseInt(p[1]) || 0);
-            } else { seg = parseInt(valor) || 0; }
+            } else { seg = parseInt(v) || 0; }
             tempoOriginal = seg;
-            salvar();
-            atualizarUI(); 
-            publicar();
+            document.body.classList.remove('alerta-total');
+            salvar(); atualizarUI(); publicar();
         });
 
         function salvar() {
-            localStorage.setItem('tempoPersistente', seg);
-            localStorage.setItem('originalPersistente', tempoOriginal);
+            localStorage.setItem('seg', seg);
+            localStorage.setItem('rodando', rodando);
+            localStorage.setItem('orig', tempoOriginal);
         }
 
         function publicar() {
@@ -135,64 +153,47 @@
         }
 
         window.toggle = () => {
+            window.forcarDestravamentoAudio();
             rodando = !rodando;
-            if (rodando) {
-                // Ao iniciar, o som começa mudo para garantir a permissão do Chrome
-                som.volume = 0;
-                som.play().catch(() => console.log("Permissão de áudio aguardando..."));
-                
-                ticker = setInterval(() => {
-                    seg--;
-                    salvar();
-                    gerenciarSom();
-                    atualizarUI();
-                    if (seg % 2 === 0) publicar();
-                }, 1000);
-            } else {
-                clearInterval(ticker);
-                gerenciarSom();
-            }
-            publicar(); atualizarUI();
+            if (rodando) ticker = setInterval(tick, 1000);
+            else clearInterval(ticker);
+            salvar(); publicar(); atualizarUI();
         };
 
         window.setPre = (s) => {
+            window.forcarDestravamentoAudio();
             seg = s; tempoOriginal = s; rodando = false;
-            clearInterval(ticker); gerenciarSom();
+            clearInterval(ticker);
+            document.body.classList.remove('alerta-total');
             salvar(); atualizarUI(); publicar();
         };
 
-        window.addMin = () => { seg += 60; salvar(); atualizarUI(); if(rodando) publicar(); };
+        window.addMin = () => { 
+            seg += 60; 
+            if (seg > 0) document.body.classList.remove('alerta-total');
+            salvar(); atualizarUI(); if(rodando) publicar(); 
+        };
 
-        window.enviarVis = (v) => { 
+        window.enviarVis = (v) => {
             vis = v; publicar();
-            const btn = document.getElementById('btn-obs-toggle');
-            const status = document.getElementById('status-obs');
-            if(v) {
-                btn.innerText = "Ocultar no OBS";
-                btn.className = "btn-reset";
-                btn.onclick = () => enviarVis(false);
-                status.style.display = "block";
-            } else {
-                btn.innerText = "Mostrar no OBS";
-                btn.className = "btn-obs";
-                btn.onclick = () => enviarVis(true);
-                status.style.display = "none";
-            }
+            const btn = document.getElementById('btn-obs-toggle'), status = document.getElementById('status-obs');
+            if(v) { btn.innerText = "OCULTAR NO OBS"; btn.onclick = () => enviarVis(false); status.style.display = "block"; }
+            else { btn.innerText = "MOSTRAR NO OBS"; btn.onclick = () => enviarVis(true); status.style.display = "none"; }
         };
 
         window.resetar = () => {
-            seg = tempoOriginal; rodando = false; clearInterval(ticker); 
-            gerenciarSom(); atualizarUI(); publicar(); salvar();
+            window.forcarDestravamentoAudio();
+            seg = tempoOriginal; rodando = false; clearInterval(ticker);
+            document.body.classList.remove('alerta-total');
+            salvar(); atualizarUI(); publicar();
         };
 
         function atualizarUI() {
             if (document.activeElement === display) return;
-            const abs = Math.abs(seg);
-            const m = Math.floor(abs/60).toString().padStart(2,'0');
-            const s = (abs%60).toString().padStart(2,'0');
+            const a = Math.abs(seg), m = Math.floor(a/60).toString().padStart(2,'0'), s = (a%60).toString().padStart(2,'0');
             display.innerText = `${seg < 0 ? '-' : ''}${m}:${s}`;
             const b = document.getElementById('btn-main');
-            b.innerText = rodando ? "Pausar" : "Iniciar";
+            b.innerText = rodando ? "PAUSAR" : "INICIAR";
             b.className = rodando ? "btn-pausar" : "";
         }
 
