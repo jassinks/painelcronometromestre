@@ -12,7 +12,7 @@
         #corpo-cronometro { background: var(--verde-secundario); padding: 40px 20px; border-radius: 0 0 40px 40px; border: 8px solid var(--verde-primario); border-top: none; display: flex; justify-content: center; align-items: center; width: 100%; max-width: 900px; min-height: 300px; }
         #tempo-display { font-size: clamp(60px, 22vw, 280px); font-weight: 800; color: var(--branco); line-height: 1; text-align: center; width: 100%; outline: none; cursor: text; white-space: nowrap; display: inline-block; }
 
-        /* ESTADO DE ALERTA -00:01 até -00:10 */
+        /* ESTADO DE ALERTA RÍGIDO */
         .alerta-total #tempo-display { color: #ff3333 !important; animation: shake-number 0.12s infinite; }
 
         @keyframes shake-number {
@@ -33,7 +33,7 @@
         .btn-reset { background: #c0392b !important; border-bottom-color: #7b241c !important; }
     </style>
 </head>
-<body id="main-body" onclick="unlockAudio()">
+<body id="main-body">
 
     <div id="topo-relogio">00:00:00</div>
     <div id="corpo-cronometro">
@@ -57,6 +57,7 @@
         </div>
     </div>
 
+    <!-- Áudio com ID correto para a função -->
     <audio id="alarmeSom" src="https://actions.google.com/sounds/v1/alarms/industrial_alarm_loop.ogg" preload="auto" loop></audio>
 
     <script type="module">
@@ -77,14 +78,18 @@
         const display = document.getElementById('tempo-display');
         const body = document.getElementById('main-body');
 
-        let seg = 300, rodando = false, vis = false, ticker = null, tempoOriginal = 300, audioUnlocked = false;
+        let seg = 300, rodando = false, vis = false, ticker = null, tempoOriginal = 300;
 
-        // Desbloqueio infalível de áudio
-        window.unlockAudio = () => {
-            if (!audioUnlocked) {
-                som.play().then(() => { som.pause(); som.currentTime = 0; audioUnlocked = true; });
-            }
-        };
+        // FUNÇÃO DE OURO: Desbloqueia o áudio em qualquer interação
+        function desbloquearAudio() {
+            som.play().then(() => {
+                // Se não estiver no tempo de alarme, pausa imediatamente
+                if (seg > -1 || seg < -10 || !rodando) {
+                    som.pause();
+                    som.currentTime = 0;
+                }
+            }).catch(e => console.log("Aguardando interação para áudio..."));
+        }
 
         display.addEventListener('focus', () => { if(rodando) toggle(); });
         display.addEventListener('blur', processarEntradaManual);
@@ -110,7 +115,7 @@
         }
 
         window.toggle = () => {
-            unlockAudio();
+            desbloquearAudio(); // Tenta desbloquear o som aqui
             rodando = !rodando;
             if (rodando) {
                 ticker = setInterval(() => {
@@ -128,26 +133,29 @@
         };
 
         function gerenciarAlarme() {
-            // SOM E ANIMAÇÃO APENAS DE -00:01 ATÉ -00:10
+            // Lógica EXATA: de -1 até -10 toca e treme
             if (seg <= -1 && seg >= -10 && rodando) {
                 if (som.paused) som.play().catch(() => {});
                 body.classList.add('alerta-total');
             } else {
                 som.pause();
-                som.currentTime = 0; // Garante que o som pare imediatamente
+                som.currentTime = 0;
                 body.classList.remove('alerta-total');
             }
         }
 
         window.setPre = (s) => {
-            unlockAudio();
+            desbloquearAudio();
             seg = s; tempoOriginal = s; rodando = false;
             clearInterval(ticker); gerenciarAlarme(); atualizarUI(); publicar();
         };
 
         window.addMin = () => { seg += 60; atualizarUI(); if(rodando) publicar(); };
         window.enviarVis = (v) => { vis = v; publicar(); };
-        window.resetar = () => { seg = tempoOriginal; rodando = false; clearInterval(ticker); gerenciarAlarme(); atualizarUI(); publicar(); };
+        window.resetar = () => { 
+            desbloquearAudio();
+            seg = tempoOriginal; rodando = false; clearInterval(ticker); gerenciarAlarme(); atualizarUI(); publicar(); 
+        };
 
         function atualizarUI() {
             if (document.activeElement === display) return;
