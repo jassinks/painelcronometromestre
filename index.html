@@ -37,7 +37,6 @@
         .btn-obs { background: #333; border-bottom-color: #111; }
         .btn-pausar { background: #e67e22 !important; border-bottom-color: #a05819 !important; }
         .btn-reset { background: #c0392b !important; border-bottom-color: #7b241c !important; }
-        .btn-ocultar { background: #555 !important; border-bottom-color: #222 !important; }
     </style>
 </head>
 <body id="main-body" onclick="desbloquearAudio()">
@@ -68,11 +67,12 @@
         </div>
     </div>
 
+    <!-- O segredo está em usar um som que reseta sempre que disparado -->
     <audio id="alarmeSom" src="https://actions.google.com/sounds/v1/alarms/industrial_alarm_loop.ogg" preload="auto" loop></audio>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getDatabase, ref, set, onValue } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
         
         const firebaseConfig = { 
             apiKey: "AIzaSyANkLt3rRd16ueIAKbfFhCXfcutMEky_c8", 
@@ -89,6 +89,7 @@
         const body = document.getElementById('main-body');
 
         let seg = 300, rodando = false, vis = false, ticker = null, tempoOriginal = 300;
+        let audioAtivado = false;
 
         // --- PERSISTÊNCIA ---
         window.onload = () => {
@@ -101,8 +102,15 @@
             }
         };
 
-        function desbloquearAudio() {
-            som.play().then(() => { if (!deveTocar()) { som.pause(); som.currentTime = 0; } }).catch(() => {});
+        // FUNÇÃO CRÍTICA PARA NAVEGADORES
+        window.desbloquearAudio = () => {
+            if (!audioAtivado) {
+                som.play().then(() => {
+                    som.pause();
+                    som.currentTime = 0;
+                    audioAtivado = true;
+                }).catch(err => console.log("Aguardando interação..."));
+            }
         }
 
         function deveTocar() { return (seg <= -1 && seg >= -10 && rodando); }
@@ -145,10 +153,16 @@
 
         function gerenciarAlarme() {
             if (deveTocar()) {
-                if (som.paused) som.play().catch(() => {});
+                if (som.paused) {
+                    som.currentTime = 0;
+                    som.play().catch(e => console.log("Erro ao tocar:", e));
+                }
                 body.classList.add('alerta-total');
             } else {
-                som.pause(); som.currentTime = 0;
+                if (!som.paused) {
+                    som.pause();
+                    som.currentTime = 0;
+                }
                 body.classList.remove('alerta-total');
             }
         }
@@ -162,7 +176,13 @@
             atualizarUI(); publicar();
         };
 
-        window.addMin = () => { seg += 60; atualizarUI(); if(rodando) publicar(); localStorage.setItem('tempoCronometro', seg); };
+        window.addMin = () => { 
+            desbloquearAudio();
+            seg += 60; 
+            atualizarUI(); 
+            if(rodando) publicar(); 
+            localStorage.setItem('tempoCronometro', seg); 
+        };
         
         window.enviarVis = (v) => { 
             vis = v; 
@@ -171,7 +191,7 @@
             const status = document.getElementById('status-obs');
             if(v) {
                 btn.innerText = "Ocultar no OBS";
-                btn.className = "btn-reset"; // Muda cor para destaque
+                btn.className = "btn-reset";
                 btn.onclick = () => enviarVis(false);
                 status.style.display = "block";
             } else {
@@ -183,6 +203,7 @@
         };
 
         window.resetar = () => {
+            desbloquearAudio();
             seg = tempoOriginal; rodando = false; clearInterval(ticker); 
             gerenciarAlarme(); atualizarUI(); publicar();
             localStorage.setItem('tempoCronometro', seg);
